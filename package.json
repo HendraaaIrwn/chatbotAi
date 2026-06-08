@@ -1,0 +1,40 @@
+{
+  "name": "chatbot-yellow-ai",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.2",
+    "bcryptjs": "^3.0.2",
+    "jose": "^6.1.2",
+    "next": "^16.2.2",
+    "openai": "^6.1.0",
+    "prisma": "^6.19.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@tailwindcss/postcss": "^4.1.17",
+    "@testing-library/react": "^16.3.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.2.6",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.1",
+    "eslint-config-next": "^16.2.2",
+    "tailwindcss": "^4.1.17",
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.8"
+  }
+}
