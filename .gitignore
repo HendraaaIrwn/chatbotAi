@@ -7,8 +7,8 @@ coverage
 .env
 .env.local
 *.log
-prisma/dev.db
-prisma/dev.db-journal
-.venv
-__pycache__
-*.egg-info
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+backend/dev.db

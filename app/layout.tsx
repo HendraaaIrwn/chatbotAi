@@ -1,15 +1,20 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { DM_Sans, Outfit } from "next/font/google";
 import "./globals.css";
 
-const geist = Geist({
+const outfit = Outfit({
   subsets: ["latin"],
-  variable: "--font-geist",
+  variable: "--font-display",
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-body",
 });
 
 export const metadata: Metadata = {
-  title: "Chatbot Yellow AI",
-  description: "A minimal multi-user chatbot platform.",
+  title: "YellowAI",
+  description: "Build private project agents with files, prompts, and chat.",
 };
 
 export default function RootLayout({
@@ -19,7 +24,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={geist.variable}>{children}</body>
+      <body className={`${outfit.variable} ${dmSans.variable}`}>
+        {children}
+      </body>
     </html>
   );
 }

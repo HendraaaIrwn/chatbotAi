@@ -1,20 +1,20 @@
 @import "tailwindcss";
 
-:root {
-  color-scheme: dark;
-  --surface: #05060d;
-  --surface-soft: #090b13;
-  --line: rgba(255, 255, 255, 0.09);
-  --muted: #9b9aa8;
-  --accent: #cbbcff;
+@theme {
+  --font-display: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --color-accent: #f0b429;
+  --color-accent-hover: #f5c842;
+  --color-accent-glow: rgba(240, 180, 41, 0.18);
+  --color-accent-soft: rgba(240, 180, 41, 0.10);
+  --color-surface-base: #020205;
+  --color-muted: #8a8998;
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
-html,
-body {
+html, body {
   margin: 0;
   min-height: 100%;
 }
@@ -24,109 +24,218 @@ body {
   max-width: 100%;
   overflow-x: hidden;
   background:
-    radial-gradient(circle at 52% 4%, rgba(255, 255, 255, 0.1), transparent 23rem),
-    radial-gradient(circle at 84% 68%, rgba(203, 188, 255, 0.18), transparent 18rem),
-    linear-gradient(180deg, #070913 0%, #04050b 72%);
+    radial-gradient(circle at 50% 4%, rgba(240, 180, 41, 0.04), transparent 36rem),
+    radial-gradient(circle at 84% 70%, rgba(240, 180, 41, 0.03), transparent 28rem),
+    var(--color-surface-base);
   color: #f4f2fa;
-  font-family:
-    var(--font-geist), ui-sans-serif, system-ui, -apple-system,
-    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
 }
 
-button,
-input,
-textarea,
-select {
-  font: inherit;
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
 }
 
-button,
-a,
-input,
-textarea,
-select {
-  -webkit-tap-highlight-color: transparent;
-}
+button, input, textarea, select { font: inherit; }
+button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+::selection { background: var(--color-accent-soft); color: #fff; }
 
-button {
-  cursor: pointer;
-}
-
-button:disabled {
-  cursor: not-allowed;
-}
-
-::selection {
-  background: rgba(203, 188, 255, 0.28);
-  color: #fff;
-}
-
+/* ── NOISE OVERLAY (fixed, pointer-events-none) ── */
 .shell-noise {
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
   pointer-events: none;
-  opacity: 0.18;
+  opacity: 0.08;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: 44px 44px;
-  mask-image: radial-gradient(circle at 50% 32%, black, transparent 72%);
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(circle at 50% 30%, black, transparent 72%);
 }
 
+/* ── ORB ── */
+@keyframes orb-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-7px) rotate(4deg); }
+}
+@keyframes orb-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50% { opacity: 0.52; transform: scale(1.08); }
+}
+.orb-core {
+  animation: orb-float 4.2s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+  will-change: transform;
+}
+.orb-glow {
+  animation: orb-pulse 3.2s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+  will-change: transform, opacity;
+}
 .orb-shadow {
   box-shadow:
-    inset 18px 18px 36px rgba(255, 255, 255, 0.34),
-    inset -20px -24px 44px rgba(0, 0, 0, 0.92),
-    0 0 42px rgba(255, 255, 255, 0.16),
-    0 28px 64px rgba(0, 0, 0, 0.65);
+    inset 14px 14px 28px rgba(255,255,255,0.24),
+    inset -16px -20px 36px rgba(0,0,0,0.9),
+    0 24px 56px rgba(0,0,0,0.55);
 }
 
-.soft-panel {
-  border: 1px solid var(--line);
+@media (prefers-reduced-motion: reduce) {
+  .orb-core,
+  .orb-glow {
+    animation: none;
+    will-change: auto;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* ── PAGE SHELL: DOUBLE-BEZEL (use ONLY for outermost page container) ── */
+.bezel-shell {
+  padding: 2px;
+  border-radius: 2.25rem;
+  background: rgba(255,255,255,0.02);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.05);
+}
+.bezel-shell-inner {
+  border-radius: calc(2.25rem - 2px);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
-    rgba(7, 8, 16, 0.78);
+    linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.006)),
+    rgba(8,8,16,0.78);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 24px 80px rgba(0, 0, 0, 0.35);
+    inset 0 1px 1px rgba(255,255,255,0.05),
+    0 28px 90px rgba(0,0,0,0.45);
 }
 
+/* ── INNER PANEL (for cards, forms, sections inside the page shell) ── */
+.panel {
+  border: 1px solid rgba(255,255,255,0.06);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.006)),
+    rgba(8,8,16,0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.03),
+    0 12px 40px rgba(0,0,0,0.22);
+}
+
+/* ── GLASS BUTTON ── */
 .glass-button {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.035);
   transition:
-    transform 180ms ease,
-    border-color 180ms ease,
-    background 180ms ease,
-    color 180ms ease;
+    transform 400ms var(--ease-spring),
+    border-color 300ms var(--ease-spring),
+    background 300ms var(--ease-spring);
 }
-
 .glass-button:hover {
-  border-color: rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.06);
 }
-
 .glass-button:active {
-  transform: translateY(1px) scale(0.99);
+  transform: scale(0.97) translateY(1px);
 }
 
+/* ── FIELD ── */
 .field-surface {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(2, 3, 9, 0.72);
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(2,3,9,0.62);
   color: #f4f2fa;
   outline: none;
   transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    background 160ms ease;
+    border-color 250ms var(--ease-spring),
+    box-shadow 350ms var(--ease-spring);
 }
-
 .field-surface:focus {
-  border-color: rgba(203, 188, 255, 0.62);
-  box-shadow: 0 0 0 4px rgba(203, 188, 255, 0.08);
+  border-color: rgba(240,180,41,0.45);
+  box-shadow: 0 0 0 3px rgba(240,180,41,0.06);
+}
+.field-surface::placeholder {
+  color: rgba(244,242,250,0.34);
 }
 
-.field-surface::placeholder {
-  color: rgba(244, 242, 250, 0.43);
+/* ── EYEBROW TAG ── */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 0.2rem 0.7rem;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-weight: 500;
+  font-family: var(--font-body);
+}
+
+/* ── ACCENT BUTTON ── */
+.accent-btn {
+  border-radius: 9999px;
+  background: var(--color-accent);
+  color: var(--color-surface-base);
+  font-weight: 600;
+  transition:
+    background 300ms var(--ease-spring),
+    transform 400ms var(--ease-spring),
+    box-shadow 350ms var(--ease-spring);
+}
+.accent-btn:hover {
+  background: var(--color-accent-hover);
+  box-shadow: 0 0 28px var(--color-accent-glow);
+}
+.accent-btn:active {
+  transform: scale(0.97);
+}
+
+/* ── BUTTON-IN-BUTTON ICON NEST ── */
+.btn-icon-nest {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 9999px;
+  background: rgba(0,0,0,0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 400ms var(--ease-spring);
+}
+.group:hover .btn-icon-nest {
+  transform: translate(2px, -2px) scale(1.08);
+}
+
+/* ── SCROLL REVEAL ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity 700ms var(--ease-spring),
+    transform 700ms var(--ease-spring);
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reveal-delay-1 { transition-delay: 60ms; }
+.reveal-delay-2 { transition-delay: 140ms; }
+.reveal-delay-3 { transition-delay: 220ms; }
+.reveal-delay-4 { transition-delay: 300ms; }
+.reveal-delay-5 { transition-delay: 380ms; }
+
+/* ── AMBIENT GLOW (single, restrained) ── */
+.ambient-glow-top {
+  pointer-events: none;
+  position: absolute;
+  inset-x: 0;
+  top: 0;
+  height: 16rem;
+  background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.07), transparent 75%);
+}
+
+/* ── TEXT LINK ── */
+.text-link {
+  color: var(--color-accent);
+  transition: color 250ms var(--ease-spring);
+}
+.text-link:hover {
+  color: var(--color-accent-hover);
 }

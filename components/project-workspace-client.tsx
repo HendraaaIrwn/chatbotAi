@@ -3,20 +3,14 @@
 import { AssistantOrb } from "@/components/assistant-orb";
 import {
   ArrowUp,
-  BookmarkSimple,
   CaretDown,
   ChatCircleText,
-  CopySimple,
   Files,
   FolderSimple,
-  GearSix,
-  Globe,
   Lightning,
-  Microphone,
   Plus,
   Robot,
   ShieldCheck,
-  SidebarSimple,
   Sparkle,
   Stack,
   Users,
@@ -65,10 +59,7 @@ function cx(...classes: Array<string | false | null | undefined>) {
 }
 
 function formatFileSize(bytes: number) {
-  if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(1)} KB`;
-  }
-
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
@@ -111,247 +102,147 @@ export function ProjectWorkspaceClient({
 
   async function handleProjectUpdate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
-    setNotice("");
-
+    setError(""); setNotice("");
     const formData = new FormData(event.currentTarget);
-    const response = await fetch(`/api/projects/${project.id}`, {
+    const r = await fetch(`/api/projects/${project.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: String(formData.get("name") || ""),
-        description: String(formData.get("description") || ""),
-      }),
+      body: JSON.stringify({ name: String(formData.get("name") || ""), description: String(formData.get("description") || "") }),
     });
-    const data = await response.json();
-
-    if (!response.ok) {
-      setError(data.error?.message || "Could not update project.");
-      return;
-    }
-
-    setProject((current) => ({ ...current, ...data.project }));
+    const d = await r.json();
+    if (!r.ok) { setError(d.error?.message || "Could not update project."); return; }
+    setProject((c) => ({ ...c, ...d.project }));
     setNotice("Project saved.");
   }
 
   async function handleAddMember(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
-    setNotice("");
-
+    setError(""); setNotice("");
     const form = event.currentTarget;
     const formData = new FormData(form);
-    const response = await fetch(`/api/projects/${project.id}/members`, {
+    const r = await fetch(`/api/projects/${project.id}/members`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: String(formData.get("email") || ""),
-        role: String(formData.get("role") || "viewer"),
-      }),
+      body: JSON.stringify({ email: String(formData.get("email") || ""), role: String(formData.get("role") || "viewer") }),
     });
-    const data = await response.json();
-
-    if (!response.ok) {
-      setError(data.error?.message || "Could not add collaborator.");
-      return;
-    }
-
-    setMembers((current) => [...current, data.member]);
+    const d = await r.json();
+    if (!r.ok) { setError(d.error?.message || "Could not add collaborator."); return; }
+    setMembers((c) => [...c, d.member]);
     form.reset();
     setNotice("Collaborator added.");
   }
 
   async function handleRoleChange(memberId: string, role: string) {
-    setError("");
-    setNotice("");
-
-    const response = await fetch(
-      `/api/projects/${project.id}/members/${memberId}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role }),
-      },
-    );
-    const data = await response.json();
-
-    if (!response.ok) {
-      setError(data.error?.message || "Could not update collaborator.");
-      return;
-    }
-
-    setMembers((current) =>
-      current.map((member) => (member.id === memberId ? data.member : member)),
-    );
+    setError(""); setNotice("");
+    const r = await fetch(`/api/projects/${project.id}/members/${memberId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role }),
+    });
+    const d = await r.json();
+    if (!r.ok) { setError(d.error?.message || "Could not update collaborator."); return; }
+    setMembers((c) => c.map((m) => (m.id === memberId ? d.member : m)));
     setNotice("Collaborator updated.");
   }
 
   async function handleRemoveMember(memberId: string) {
-    setError("");
-    setNotice("");
-
-    const response = await fetch(
-      `/api/projects/${project.id}/members/${memberId}`,
-      { method: "DELETE" },
-    );
-    const data = await response.json();
-
-    if (!response.ok) {
-      setError(data.error?.message || "Could not remove collaborator.");
-      return;
-    }
-
-    setMembers((current) => current.filter((member) => member.id !== memberId));
+    setError(""); setNotice("");
+    const r = await fetch(`/api/projects/${project.id}/members/${memberId}`, { method: "DELETE" });
+    const d = await r.json();
+    if (!r.ok) { setError(d.error?.message || "Could not remove collaborator."); return; }
+    setMembers((c) => c.filter((m) => m.id !== memberId));
     setNotice("Collaborator removed.");
   }
 
   async function handleDeleteProject() {
     setError("");
-    const response = await fetch(`/api/projects/${project.id}`, {
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
-      const data = await response.json();
-      setError(data.error?.message || "Could not delete project.");
-      return;
-    }
-
+    const r = await fetch(`/api/projects/${project.id}`, { method: "DELETE" });
+    if (!r.ok) { const d = await r.json(); setError(d.error?.message || "Could not delete project."); return; }
     router.push("/dashboard");
     router.refresh();
   }
 
   async function handlePromptSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
-    setNotice("");
-
-    const response = await fetch(`/api/projects/${project.id}/prompts`, {
+    setError(""); setNotice("");
+    const r = await fetch(`/api/projects/${project.id}/prompts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content: promptContent }),
     });
-    const data = await response.json();
-
-    if (!response.ok) {
-      setError(data.error?.message || "Could not save prompt.");
-      return;
-    }
-
-    setPromptContent(data.prompt.content);
+    const d = await r.json();
+    if (!r.ok) { setError(d.error?.message || "Could not save prompt."); return; }
+    setPromptContent(d.prompt.content);
     setNotice("Prompt saved.");
   }
 
   async function handleFileUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
-    setNotice("");
-    setIsUploading(true);
-
+    setError(""); setNotice(""); setIsUploading(true);
     const form = event.currentTarget;
     const formData = new FormData(form);
-    const response = await fetch(`/api/projects/${project.id}/files`, {
-      method: "POST",
-      body: formData,
-    });
-    const data = await response.json();
+    const r = await fetch(`/api/projects/${project.id}/files`, { method: "POST", body: formData });
+    const d = await r.json();
     setIsUploading(false);
-
-    if (!response.ok) {
-      setError(data.error?.message || "Could not upload file.");
-      return;
-    }
-
-    setFiles((current) => [data.file, ...current]);
+    if (!r.ok) { setError(d.error?.message || "Could not upload file."); return; }
+    setFiles((c) => [d.file, ...c]);
     form.reset();
     setNotice("File uploaded.");
   }
 
   function toggleSelectedFile(fileId: string) {
-    setSelectedFileIds((current) =>
-      current.includes(fileId)
-        ? current.filter((id) => id !== fileId)
-        : [...current, fileId],
-    );
+    setSelectedFileIds((c) => c.includes(fileId) ? c.filter((id) => id !== fileId) : [...c, fileId]);
   }
 
   async function handleChatSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const message = chatInput.trim();
-
-    if (!message) {
-      return;
-    }
-
-    setError("");
-    setNotice("");
-    setIsChatting(true);
-    setChatInput("");
-
-    const response = await fetch(`/api/projects/${project.id}/chat`, {
+    if (!message) return;
+    setError(""); setNotice(""); setIsChatting(true); setChatInput("");
+    const r = await fetch(`/api/projects/${project.id}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        conversationId,
-        message,
-        fileIds: selectedFileIds,
-      }),
+      body: JSON.stringify({ conversationId, message, fileIds: selectedFileIds }),
     });
-    const data = await response.json();
+    const d = await r.json();
     setIsChatting(false);
-
-    if (!response.ok) {
-      setError(data.error?.message || "Could not send message.");
-      setChatInput(message);
-      return;
-    }
-
-    setConversationId(data.conversation.id);
-    setChatMessages((current) => [...current, ...data.messages]);
+    if (!r.ok) { setError(d.error?.message || "Could not send message."); setChatInput(message); return; }
+    setConversationId(d.conversation.id);
+    setChatMessages((c) => [...c, ...d.messages]);
   }
 
   const navItems = [
     { label: "Projects", icon: Stack, href: "/dashboard", active: false },
-    { label: "Intelligence", icon: Sparkle, href: "#chat", active: true },
-    { label: "Agent", icon: Robot, href: "#prompt", active: false },
-    { label: "Files", icon: Files, href: "#files", active: false },
-    { label: "Team", icon: Users, href: "#team", active: false },
+    { label: "Chat", icon: Sparkle, href: "#chat", active: true },
+    { label: "Settings", icon: Robot, href: "#tools", active: false },
   ];
 
   return (
-    <main className="relative min-h-[100dvh] w-full max-w-full overflow-x-hidden bg-[#05060d] text-[#f4f2fa]">
+    <main className="relative min-h-[100dvh] w-full max-w-full overflow-x-hidden bg-[#020205] text-[#f4f2fa]">
       <div className="shell-noise" />
-      <div className="grid min-h-[100dvh] lg:grid-cols-[292px_1fr]">
-        <aside className="soft-panel relative z-10 flex min-h-full flex-col border-y-0 border-l-0 px-5 py-7 lg:sticky lg:top-0 lg:h-[100dvh]">
-          <div className="flex items-center justify-between">
-            <Link href="/dashboard" className="flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-full border border-white/12 bg-white/10 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
-                <Lightning size={18} weight="fill" />
-              </span>
-              <span className="text-2xl font-semibold">YellowAI</span>
-            </Link>
-            <button
-              type="button"
-              className="glass-button grid h-10 w-10 place-items-center rounded-full text-white/70 active:scale-95"
-              aria-label="Toggle sidebar"
-            >
-              <SidebarSimple size={18} />
-            </button>
-          </div>
+      <div className="mx-auto grid min-h-[100dvh] max-w-[1500px] gap-6 px-4 py-6 lg:grid-cols-[292px_1fr]">
+        {/* ── Sidebar (.panel) ── */}
+        <aside className="panel flex flex-col rounded-[1.75rem] p-5 lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)]">
+          <Link href="/dashboard" className="flex items-center gap-3 group">
+            <span className="grid h-10 w-10 place-items-center rounded-full border border-white/[0.07] bg-white/[0.05] text-accent transition-all duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:border-white/[0.14]">
+              <Lightning size={18} weight="fill" />
+            </span>
+            <span className="font-display text-2xl font-semibold tracking-tight">YellowAI</span>
+          </Link>
 
-          <nav className="mt-14 space-y-3">
-            {navItems.map((item) => {
+          <nav className="mt-14 space-y-2">
+            {navItems.map((item, index) => {
               const Icon = item.icon;
-
               return (
                 <Link
                   key={item.label}
                   href={item.href}
+                  style={{ transitionDelay: `${index * 50}ms` }}
                   className={cx(
-                    "flex h-14 items-center gap-3 rounded-full px-5 text-sm transition active:scale-[0.99]",
+                    "flex h-14 items-center gap-3 rounded-full px-5 text-sm transition-all duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]",
                     item.active
-                      ? "border border-white/22 bg-white/12 text-white shadow-[inset_18px_0_32px_rgba(255,255,255,0.12),inset_-24px_0_36px_rgba(255,255,255,0.12),0_14px_38px_rgba(0,0,0,0.26)]"
-                      : "text-white/48 hover:bg-white/[0.04] hover:text-white/80",
+                      ? "border border-white/[0.16] bg-white/[0.07] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                      : "text-white/42 hover:bg-white/[0.03] hover:text-white/72",
                   )}
                 >
                   <Icon size={20} weight={item.active ? "fill" : "regular"} />
@@ -361,388 +252,265 @@ export function ProjectWorkspaceClient({
             })}
           </nav>
 
-          <div className="mt-auto rounded-[20px] border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-            <div className="flex items-center gap-3">
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-white/8 text-[#cbbcff]">
-                <ShieldCheck size={18} />
-              </span>
-              <div>
-                <p className="text-sm font-medium text-white">Project role</p>
-                <p className="mt-1 text-xs uppercase text-white/42">
-                  {project.role}
-                </p>
+          <div className="mt-auto">
+            <div className="panel rounded-2xl p-4">
+              <div className="flex items-center gap-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/[0.05] text-accent">
+                  <ShieldCheck size={17} weight="regular" />
+                </span>
+                <div>
+                  <p className="text-sm font-medium text-white">Project role</p>
+                  <p className="mt-0.5 text-xs uppercase tracking-wide text-white/36">{project.role}</p>
+                </div>
               </div>
             </div>
           </div>
         </aside>
 
-        <section className="relative px-4 py-5 sm:px-6 lg:px-7">
-          <div className="soft-panel relative min-h-[calc(100dvh-2.5rem)] overflow-hidden rounded-[34px]">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.12),transparent_34rem)]" />
-            <div className="pointer-events-none absolute inset-y-0 right-0 w-80 bg-[radial-gradient(circle_at_100%_70%,rgba(203,188,255,0.18),transparent_24rem)]" />
-
-            <header className="relative z-10 flex flex-wrap items-center justify-between gap-4 px-6 pt-6 sm:px-9">
+        {/* ── Main Content Area ── */}
+        <section className="flex h-full flex-col">
+          <header className="flex flex-wrap items-center justify-between gap-4 px-6 pt-6 sm:px-9">
               <Link
                 href="/dashboard"
-                className="glass-button inline-flex h-14 items-center gap-3 rounded-full px-5 text-sm text-white/82 active:scale-[0.99]"
+                className="glass-button inline-flex h-14 items-center gap-3 rounded-full px-5 text-sm text-white/76"
               >
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-white/8">
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-white/[0.05]">
                   <Lightning size={15} weight="fill" />
                 </span>
                 <span className="max-w-[11rem] truncate">{project.name}</span>
-                <CaretDown size={16} className="text-white/52" />
+                <CaretDown size={16} className="text-white/42" />
               </Link>
 
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  className="glass-button hidden h-12 w-12 place-items-center rounded-full text-white/78 sm:grid"
-                  aria-label="Language"
-                >
-                  <Globe size={21} />
-                </button>
-                <div className="glass-button flex h-12 items-center gap-3 rounded-full px-4 text-sm text-white/72">
-                  <span className="grid h-7 w-7 place-items-center rounded-full bg-[#cbbcff]/18 text-[#cbbcff]">
-                    {initials(project.name) || "YA"}
-                  </span>
-                  <span className="hidden max-w-[8rem] truncate sm:inline">
-                    {project.id.slice(0, 6)}...{project.id.slice(-4)}
-                  </span>
-                </div>
+              <div className="glass-button flex h-12 items-center gap-3 rounded-full px-4 text-sm text-white/64">
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-accent-soft text-accent">
+                  {initials(project.name) || "YA"}
+                </span>
+                <span className="hidden max-w-[8rem] truncate sm:inline">
+                  {project.id.slice(0, 6)}...{project.id.slice(-4)}
+                </span>
               </div>
             </header>
 
-            <div className="relative z-10 grid gap-6 px-4 pb-8 pt-8 sm:px-7 xl:grid-cols-[1fr_390px]">
-              <section
-                id="chat"
-                className="relative min-h-[720px] rounded-[30px] border border-white/8 bg-[#05060d]/72 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:p-6"
-              >
-                <div className="absolute right-5 top-20 hidden flex-col gap-4 lg:flex">
-                  {[
-                    { label: "Save", icon: BookmarkSimple },
-                    { label: "Copy", icon: CopySimple },
-                    { label: "Settings", icon: GearSix },
-                  ].map((action) => {
-                    const Icon = action.icon;
-
-                    return (
-                      <button
-                        key={action.label}
-                        type="button"
-                        className="glass-button grid h-14 w-14 place-items-center rounded-full text-white/72"
-                        aria-label={action.label}
-                      >
-                        <Icon size={21} />
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="mx-auto flex min-h-[620px] max-w-5xl flex-col justify-end">
+            <div className="relative z-10 grid flex-1 gap-6 px-4 pb-6 pt-6 sm:px-7 xl:grid-cols-[1fr_380px]">
+              {/* ── Chat Section (Double-Bezel) ── */}
+              <div className="bezel-shell max-h-[84vh]">
+                <div className="bezel-shell-inner relative flex min-h-[84vh] flex-col overflow-hidden p-4 sm:p-6">
+                  <div className="ambient-glow-top" />
+                  <section id="chat" className="relative z-10 flex flex-1 flex-col">
+                <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-end">
                   <div className="flex flex-1 flex-col justify-center pb-8">
                     {chatMessages.length ? (
                       <div className="mx-auto w-full max-w-3xl space-y-3">
-                        {chatMessages.map((message) => (
+                        {chatMessages.map((msg) => (
                           <div
-                            key={message.id}
+                            key={msg.id}
                             className={cx(
-                              "max-w-[86%] rounded-[22px] border px-4 py-3 text-sm leading-6 shadow-[0_18px_48px_rgba(0,0,0,0.24)]",
-                              message.role === "assistant"
-                                ? "border-white/9 bg-white/[0.055] text-white/86"
-                                : "ml-auto border-[#cbbcff]/26 bg-[#cbbcff]/18 text-white",
+                              "max-w-[85%] rounded-2xl border px-4 py-3.5 text-sm leading-6",
+                              msg.role === "assistant"
+                                ? "border-white/[0.05] bg-white/[0.03] text-white/82"
+                                : "ml-auto border-accent/16 bg-accent-soft text-white",
                             )}
                           >
-                            <p className="mb-1 flex items-center gap-2 text-xs font-medium text-white/44">
-                              {message.role === "assistant" ? (
-                                <Robot size={14} />
-                              ) : (
-                                <ChatCircleText size={14} />
-                              )}
-                              {message.role}
+                            <p className="mb-1.5 flex items-center gap-2 text-xs font-medium text-white/38">
+                              {msg.role === "assistant" ? <Robot size={13} weight="regular" /> : <ChatCircleText size={13} weight="regular" />}
+                              {msg.role}
                             </p>
-                            <p className="whitespace-pre-wrap">
-                              {message.content}
-                            </p>
+                            <p className="whitespace-pre-wrap">{msg.content}</p>
                           </div>
                         ))}
                       </div>
                     ) : (
                       <div className="mx-auto grid max-w-3xl place-items-center text-center">
                         <div className="relative mb-8">
-                          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[length:14px_14px] opacity-50 [mask-image:radial-gradient(circle,black,transparent_66%)]" />
+                          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[length:16px_16px] opacity-30 [mask-image:radial-gradient(circle,black,transparent_66%)]" />
                           <AssistantOrb />
                         </div>
-                        <p className="text-3xl font-semibold text-white/78">
-                          Let&apos;s get started.
-                        </p>
-                        <h1 className="mt-4 max-w-3xl text-4xl font-semibold text-white/76 sm:text-5xl">
+                        <p className="font-display text-3xl font-semibold tracking-tight text-white/68">Let&apos;s get started.</p>
+                        <h1 className="font-display mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-white/66 sm:text-5xl">
                           How can I assist you today?
                         </h1>
                       </div>
                     )}
                   </div>
 
-                  <form
-                    onSubmit={handleChatSubmit}
-                    className="mx-auto w-full max-w-4xl rounded-[28px] border border-white/18 bg-[#070812]/90 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_32px_90px_rgba(0,0,0,0.46),42px_18px_80px_rgba(203,188,255,0.12)]"
-                  >
-                    <div className="flex items-start gap-3">
-                      <Sparkle
-                        size={22}
-                        weight="fill"
-                        className="mt-2 shrink-0 text-white/72"
-                      />
-                      <textarea
-                        value={chatInput}
-                        onChange={(event) => setChatInput(event.target.value)}
-                        rows={3}
-                        className="min-h-28 flex-1 resize-none bg-transparent text-base leading-7 text-white outline-none placeholder:text-white/45"
-                        placeholder="Ask me anything..."
-                      />
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          className="glass-button grid h-9 w-9 place-items-center rounded-full text-white/72"
-                          aria-label="Add context"
-                        >
-                          <Plus size={17} />
-                        </button>
-                        {selectedFiles.length ? (
-                          selectedFiles.slice(0, 3).map((file) => (
-                            <button
-                              key={file.id}
-                              type="button"
-                              onClick={() => toggleSelectedFile(file.id)}
-                              className="glass-button max-w-[13rem] truncate rounded-full px-3 py-2 text-xs text-white/58"
-                              title={file.filename}
-                            >
-                              {file.filename}
-                            </button>
-                          ))
-                        ) : (
-                          <>
-                            <span className="rounded-full bg-white/[0.045] px-3 py-2 text-xs text-white/42">
-                              DeFi Execution
-                            </span>
-                            <span className="rounded-full bg-white/[0.045] px-3 py-2 text-xs text-white/42">
-                              Research Brief
-                            </span>
-                            <span className="rounded-full bg-white/[0.045] px-3 py-2 text-xs text-white/42">
-                              Goal Tasks
-                            </span>
-                          </>
-                        )}
+                  {/* ── Chat Input (.panel) ── */}
+                  <div className="panel mx-auto w-full max-w-4xl rounded-2xl p-4">
+                    <form onSubmit={handleChatSubmit}>
+                      <div className="flex items-start gap-3">
+                        <Sparkle size={21} weight="fill" className="mt-2 shrink-0 text-white/62" />
+                        <textarea
+                          value={chatInput}
+                          onChange={(e) => setChatInput(e.target.value)}
+                          rows={3}
+                          className="min-h-28 flex-1 resize-none bg-transparent text-base leading-7 text-white outline-none placeholder:text-white/36"
+                          placeholder="Ask me anything..."
+                        />
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => document.getElementById("files")?.scrollIntoView({ behavior: "smooth" })}
+                            className="glass-button grid h-9 w-9 place-items-center rounded-full text-white/62"
+                            aria-label="Add file context"
+                          >
+                            <Plus size={16} weight="regular" />
+                          </button>
+                          {selectedFiles.length > 0 &&
+                            selectedFiles.slice(0, 3).map((file) => (
+                              <button
+                                key={file.id}
+                                type="button"
+                                onClick={() => toggleSelectedFile(file.id)}
+                                className="glass-button max-w-[12rem] truncate rounded-full px-3 py-1.5 text-xs text-white/48"
+                                title={file.filename}
+                              >
+                                {file.filename}
+                              </button>
+                            ))}
+                        </div>
                         <button
-                          type="button"
-                          className="glass-button grid h-9 w-9 place-items-center rounded-full text-white/62"
-                          aria-label="Voice input"
-                        >
-                          <Microphone size={17} />
-                        </button>
-                        <button
-                          disabled={isChatting}
-                          className="grid h-10 w-10 place-items-center rounded-full bg-[#b8a2ff] text-[#070812] shadow-[0_0_32px_rgba(184,162,255,0.35)] transition hover:bg-[#cbbcff] active:scale-95 disabled:opacity-60"
+                          type="submit"
+                          disabled={isChatting || !chatInput.trim()}
+                          className="accent-btn grid h-10 w-10 place-items-center rounded-full p-0 text-[#020205] disabled:opacity-30 disabled:shadow-none"
                           aria-label="Send message"
                         >
-                          <ArrowUp size={18} weight="bold" />
+                          <ArrowUp size={17} weight="bold" />
                         </button>
                       </div>
-                    </div>
-                  </form>
+                    </form>
+                  </div>
                 </div>
               </section>
+                </div>
+              </div>
 
-              <aside className="grid auto-rows-min gap-4 xl:grid-flow-row">
+              {/* ── Tools Sidebar ── */}
+              <aside className="flex max-h-[84vh] flex-col gap-4 overflow-y-auto">
                 {(error || notice) && (
-                  <div
-                    className={cx(
-                      "rounded-[22px] border px-4 py-3 text-sm",
-                      error
-                        ? "border-red-400/20 bg-red-500/10 text-red-100"
-                        : "border-emerald-300/20 bg-emerald-400/10 text-emerald-100",
-                    )}
-                  >
+                  <div className={cx(
+                    "panel shrink-0 rounded-2xl px-4 py-3 text-sm",
+                    error ? "!border-red-400/16 !bg-red-500/5 text-red-100" : "!border-emerald-300/12 !bg-emerald-400/4 text-emerald-100"
+                  )}>
                     {error || notice}
                   </div>
                 )}
 
-                <form
-                  id="prompt"
-                  onSubmit={handlePromptSave}
-                  className="soft-panel rounded-[26px] p-5"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-medium text-white">
-                        Agent prompt
-                      </p>
-                      <p className="mt-1 text-xs text-white/42">
-                        Instructions used for each response
-                      </p>
+                {/* ── Unified Settings Section ── */}
+                <div id="tools" className="bezel-shell min-h-0 flex-1 overflow-hidden">
+                  <div className="bezel-shell-inner flex h-full flex-col gap-4 overflow-y-auto p-5">
+                  {/* Prompt */}
+                  <div className="panel rounded-2xl p-5">
+                  <form onSubmit={handlePromptSave}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-white tracking-tight">Agent prompt</p>
+                        <p className="mt-1 text-xs text-white/36">Instructions used for each response</p>
+                      </div>
+                      {canEdit && (
+                        <button className="glass-button rounded-full px-4 py-2 text-xs font-medium text-white/64" type="submit">Save</button>
+                      )}
                     </div>
-                    {canEdit ? (
-                      <button
-                        className="glass-button rounded-full px-4 py-2 text-xs font-medium text-white/76"
-                        type="submit"
-                      >
-                        Save
-                      </button>
-                    ) : null}
-                  </div>
-                  <textarea
-                    value={promptContent}
-                    onChange={(event) => setPromptContent(event.target.value)}
-                    disabled={!canEdit}
-                    rows={7}
-                    className="field-surface mt-4 w-full resize-none rounded-[18px] px-4 py-3 text-sm leading-6 disabled:opacity-60"
-                  />
-                </form>
+                    <textarea
+                      value={promptContent}
+                      onChange={(e) => setPromptContent(e.target.value)}
+                      disabled={!canEdit}
+                      rows={7}
+                      className="field-surface mt-4 w-full resize-none rounded-2xl px-4 py-3 text-sm leading-6 disabled:opacity-45"
+                    />
+                  </form>
+                </div>
 
-                <section id="files" className="soft-panel rounded-[26px] p-5">
+                {/* Files */}
+                <div className="panel rounded-2xl p-5" id="files">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-medium text-white">Files</p>
-                      <p className="mt-1 text-xs text-white/42">
-                        {selectedFileIds.length} selected for chat
-                      </p>
+                      <p className="text-sm font-semibold text-white tracking-tight">Files</p>
+                      <p className="mt-1 text-xs text-white/36">{selectedFileIds.length} selected for chat</p>
                     </div>
-                    <span className="grid h-10 w-10 place-items-center rounded-full bg-white/7 text-[#cbbcff]">
-                      <Files size={19} />
+                    <span className="grid h-10 w-10 place-items-center rounded-full bg-white/[0.05] text-accent">
+                      <Files size={18} weight="regular" />
                     </span>
                   </div>
 
-                  {canEdit ? (
+                  {canEdit && (
                     <form onSubmit={handleFileUpload} className="mt-4 space-y-3">
                       <input
-                        required
-                        name="file"
-                        type="file"
+                        required name="file" type="file"
                         accept=".pdf,.txt,.md,.csv,.json,.docx"
-                        className="field-surface block w-full rounded-[16px] px-3 py-2 text-sm text-white/62 file:mr-3 file:rounded-full file:border-0 file:bg-white/10 file:px-3 file:py-1 file:text-sm file:text-white"
+                        className="field-surface block w-full rounded-2xl px-3 py-2 text-sm text-white/52 file:mr-3 file:rounded-full file:border-0 file:bg-white/[0.05] file:px-3 file:py-1 file:text-sm file:text-white/78"
                       />
-                      <button
-                        disabled={isUploading}
-                        className="glass-button w-full rounded-full px-4 py-2.5 text-sm font-medium text-white/76 disabled:opacity-60"
-                      >
+                      <button disabled={isUploading} className="glass-button w-full rounded-full px-4 py-2.5 text-sm font-medium text-white/64 disabled:opacity-50">
                         {isUploading ? "Uploading..." : "Upload file"}
                       </button>
                     </form>
-                  ) : null}
+                  )}
 
                   <div className="mt-4 space-y-2">
-                    {files.length ? (
-                      files.map((file) => (
-                        <label
-                          key={file.id}
-                          className={cx(
-                            "flex cursor-pointer items-start gap-3 rounded-[18px] border px-3 py-3 transition active:scale-[0.99]",
-                            selectedFileIds.includes(file.id)
-                              ? "border-[#cbbcff]/42 bg-[#cbbcff]/12"
-                              : "border-white/8 bg-black/18 hover:border-white/16",
-                          )}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedFileIds.includes(file.id)}
-                            onChange={() => toggleSelectedFile(file.id)}
-                            className="mt-1 accent-[#cbbcff]"
-                          />
-                          <span className="min-w-0">
-                            <span className="block truncate text-sm font-medium text-white/84">
-                              {file.filename}
-                            </span>
-                            <span className="text-xs text-white/38">
-                              {formatFileSize(file.bytes)}
-                            </span>
-                          </span>
-                        </label>
-                      ))
-                    ) : (
-                      <p className="rounded-[18px] border border-dashed border-white/12 px-3 py-8 text-center text-sm text-white/38">
-                        No files uploaded.
-                      </p>
+                    {files.length ? files.map((file) => (
+                      <label
+                        key={file.id}
+                        className={cx(
+                          "flex cursor-pointer items-start gap-3 rounded-2xl border px-3 py-3 transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.985]",
+                          selectedFileIds.includes(file.id)
+                            ? "border-accent/30 bg-accent-soft"
+                            : "border-white/[0.04] bg-black/12 hover:border-white/[0.10]",
+                        )}
+                      >
+                        <input type="checkbox" checked={selectedFileIds.includes(file.id)} onChange={() => toggleSelectedFile(file.id)} className="mt-1 accent-accent" />
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-medium text-white/76">{file.filename}</span>
+                          <span className="text-xs text-white/32">{formatFileSize(file.bytes)}</span>
+                        </span>
+                      </label>
+                    )) : (
+                      <p className="rounded-2xl border border-dashed border-white/[0.06] px-3 py-8 text-center text-sm text-white/32">No files uploaded.</p>
                     )}
                   </div>
-                </section>
+                </div>
 
-                <section id="team" className="soft-panel rounded-[26px] p-5">
+                {/* Team */}
+                <div className="panel rounded-2xl p-5" id="team">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-medium text-white">
-                        Collaborators
-                      </p>
-                      <p className="mt-1 text-xs text-white/42">
-                        Registered users only
-                      </p>
+                      <p className="text-sm font-semibold text-white tracking-tight">Collaborators</p>
+                      <p className="mt-1 text-xs text-white/36">Registered users only</p>
                     </div>
-                    <span className="grid h-10 w-10 place-items-center rounded-full bg-white/7 text-[#cbbcff]">
-                      <Users size={19} />
+                    <span className="grid h-10 w-10 place-items-center rounded-full bg-white/[0.05] text-accent">
+                      <Users size={18} weight="regular" />
                     </span>
                   </div>
 
-                  {canManageMembers ? (
+                  {canManageMembers && (
                     <form onSubmit={handleAddMember} className="mt-4 space-y-3">
-                      <input
-                        required
-                        type="email"
-                        name="email"
-                        className="field-surface w-full rounded-[16px] px-3 py-2 text-sm"
-                        placeholder="teammate@example.com"
-                      />
+                      <input required type="email" name="email" className="field-surface w-full rounded-2xl px-4 py-2 text-sm" placeholder="teammate@example.com" />
                       <div className="grid grid-cols-[1fr_auto] gap-2">
-                        <select
-                          name="role"
-                          className="field-surface rounded-[16px] px-3 py-2 text-sm"
-                          defaultValue="viewer"
-                        >
+                        <select name="role" className="field-surface rounded-2xl px-3 py-2 text-sm" defaultValue="viewer">
                           <option value="viewer">Viewer</option>
                           <option value="editor">Editor</option>
                         </select>
-                        <button className="glass-button rounded-full px-4 py-2 text-sm font-medium text-white/76">
-                          Add
-                        </button>
+                        <button className="glass-button rounded-full px-4 py-2 text-sm font-medium text-white/64">Add</button>
                       </div>
                     </form>
-                  ) : null}
+                  )}
 
                   <div className="mt-4 space-y-2">
                     {members.map((member) => {
                       const isOwner = member.role === "owner";
-
                       return (
-                        <div
-                          key={member.id}
-                          className="rounded-[18px] border border-white/8 bg-black/18 px-3 py-3"
-                        >
+                        <div key={member.id} className="rounded-2xl border border-white/[0.04] bg-black/12 px-3 py-3">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-white/86">
-                                {member.user.name || member.user.email}
-                              </p>
-                              <p className="truncate text-xs text-white/38">
-                                {member.user.email}
-                              </p>
+                              <p className="truncate text-sm font-medium text-white/80">{member.user.name || member.user.email}</p>
+                              <p className="truncate text-xs text-white/32">{member.user.email}</p>
                             </div>
-                            <span className="rounded-full bg-white/7 px-2.5 py-1 text-xs uppercase text-white/48">
-                              {member.role}
-                            </span>
+                            <span className="eyebrow border border-white/[0.05] bg-white/[0.03] text-white/40">{member.role}</span>
                           </div>
-
-                          {canManageMembers && !isOwner ? (
+                          {canManageMembers && !isOwner && (
                             <div className="mt-3 flex items-center gap-2">
                               <select
                                 value={member.role}
-                                onChange={(event) =>
-                                  void handleRoleChange(
-                                    member.id,
-                                    event.target.value,
-                                  )
-                                }
+                                onChange={(e) => void handleRoleChange(member.id, e.target.value)}
                                 className="field-surface min-w-0 flex-1 rounded-full px-3 py-1.5 text-xs"
                               >
                                 <option value="viewer">Viewer</option>
@@ -750,72 +518,55 @@ export function ProjectWorkspaceClient({
                               </select>
                               <button
                                 type="button"
-                                onClick={() =>
-                                  void handleRemoveMember(member.id)
-                                }
-                                className="glass-button rounded-full px-3 py-1.5 text-xs text-white/60 hover:text-red-100"
+                                onClick={() => void handleRemoveMember(member.id)}
+                                className="glass-button rounded-full px-3 py-1.5 text-xs text-white/50 hover:text-red-100"
                               >
                                 Remove
                               </button>
                             </div>
-                          ) : null}
+                          )}
                         </div>
                       );
                     })}
                   </div>
-                </section>
+                </div>
 
-                <section className="soft-panel rounded-[26px] p-5">
+                {/* Settings */}
+                <div className="panel rounded-2xl p-5">
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-medium text-white">
-                        Project settings
-                      </p>
-                      <p className="mt-1 text-xs text-white/42">
-                        Name and description
-                      </p>
+                      <p className="text-sm font-semibold text-white tracking-tight">Project settings</p>
+                      <p className="mt-1 text-xs text-white/36">Name and description</p>
                     </div>
-                    <span className="grid h-10 w-10 place-items-center rounded-full bg-white/7 text-[#cbbcff]">
-                      <FolderSimple size={19} />
+                    <span className="grid h-10 w-10 place-items-center rounded-full bg-white/[0.05] text-accent">
+                      <FolderSimple size={18} weight="regular" />
                     </span>
                   </div>
 
                   <form onSubmit={handleProjectUpdate} className="space-y-3">
-                    <input
-                      name="name"
-                      disabled={!canEdit}
-                      defaultValue={project.name}
-                      className="field-surface w-full rounded-[16px] px-3 py-2 text-sm disabled:opacity-60"
-                    />
-                    <textarea
-                      name="description"
-                      rows={3}
-                      disabled={!canEdit}
-                      defaultValue={project.description || ""}
-                      className="field-surface w-full resize-none rounded-[16px] px-3 py-2 text-sm disabled:opacity-60"
-                    />
-                    {canEdit ? (
-                      <button className="glass-button w-full rounded-full px-4 py-2 text-sm font-medium text-white/76">
-                        Save project
-                      </button>
-                    ) : null}
+                    <input name="name" disabled={!canEdit} defaultValue={project.name} className="field-surface w-full rounded-2xl px-4 py-2 text-sm disabled:opacity-45" />
+                    <textarea name="description" rows={3} disabled={!canEdit} defaultValue={project.description || ""} className="field-surface w-full resize-none rounded-2xl px-4 py-2 text-sm disabled:opacity-45" />
+                    {canEdit && (
+                      <button className="glass-button w-full rounded-full px-4 py-2 text-sm font-medium text-white/64">Save project</button>
+                    )}
                   </form>
 
-                  {canManageMembers ? (
+                  {canManageMembers && (
                     <button
                       type="button"
                       onClick={handleDeleteProject}
-                      className="mt-3 w-full rounded-full border border-red-400/22 bg-red-500/8 px-4 py-2 text-sm font-medium text-red-100 transition hover:border-red-300/40 active:scale-[0.99]"
+                      className="mt-3 w-full rounded-full border border-red-400/16 bg-red-500/4 px-4 py-2 text-sm font-medium text-red-100 transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-red-300/28 active:scale-[0.98]"
                     >
                       Delete project
                     </button>
-                  ) : null}
-                </section>
+                  )}
+                </div>
+                </div>
+              </div>
               </aside>
             </div>
-          </div>
-        </section>
-      </div>
-    </main>
+          </section>
+        </div>
+      </main>
   );
 }
