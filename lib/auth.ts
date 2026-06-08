@@ -4,6 +4,15 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 
 export const sessionCookieName = "chatbot_session";
+export const sessionCookieMaxAge = 60 * 60 * 24 * 7;
+
+export const sessionCookieOptions = {
+  httpOnly: true,
+  sameSite: "lax" as const,
+  secure: process.env.NODE_ENV === "production",
+  path: "/",
+  maxAge: sessionCookieMaxAge,
+};
 
 export type SessionUser = {
   id: string;
