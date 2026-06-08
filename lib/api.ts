@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { AuthError } from "@/lib/auth";
+import { OpenAIConfigError } from "@/lib/openai";
 
 export type ApiErrorCode =
   | "bad_request"
@@ -34,6 +35,10 @@ export function handleRouteError(error: unknown) {
 
   if (error instanceof NotFoundError) {
     return jsonError("not_found", error.message, 404);
+  }
+
+  if (error instanceof OpenAIConfigError) {
+    return jsonError("server_error", error.message, 500);
   }
 
   if (error instanceof ZodError) {
