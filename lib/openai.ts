@@ -31,6 +31,10 @@ export function getOpenAIErrorMessage(error: unknown) {
   return "OpenAI request failed.";
 }
 
+export function isOpenAIRequestError(error: unknown) {
+  return error instanceof OpenAI.APIError;
+}
+
 export class OpenAIConfigError extends Error {
   constructor(message: string) {
     super(message);
