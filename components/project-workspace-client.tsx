@@ -15,6 +15,7 @@ import {
   Stack,
   Users,
 } from "@phosphor-icons/react";
+import { apiFetch } from "@/lib/api";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
@@ -104,15 +105,17 @@ export function ProjectWorkspaceClient({
     event.preventDefault();
     setError(""); setNotice("");
     const formData = new FormData(event.currentTarget);
-    const r = await fetch(`/api/projects/${project.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: String(formData.get("name") || ""), description: String(formData.get("description") || "") }),
-    });
-    const d = await r.json();
-    if (!r.ok) { setError(d.error?.message || "Could not update project."); return; }
-    setProject((c) => ({ ...c, ...d.project }));
-    setNotice("Project saved.");
+    try {
+      const d = await apiFetch<{ project: { name?: string; description?: string | null } }>(`/projects/${project.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name: String(formData.get("name") || ""), description: String(formData.get("description") || "") }),
+      });
+      setProject((c) => ({ ...c, ...d.project }));
+      setNotice("Project saved.");
+    } catch (err: unknown) {
+      const apiErr = err as { message?: string };
+      setError(apiErr?.message || "Could not update project.");
+    }
   }
 
   async function handleAddMember(event: FormEvent<HTMLFormElement>) {
@@ -120,60 +123,73 @@ export function ProjectWorkspaceClient({
     setError(""); setNotice("");
     const form = event.currentTarget;
     const formData = new FormData(form);
-    const r = await fetch(`/api/projects/${project.id}/members`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: String(formData.get("email") || ""), role: String(formData.get("role") || "viewer") }),
-    });
-    const d = await r.json();
-    if (!r.ok) { setError(d.error?.message || "Could not add collaborator."); return; }
-    setMembers((c) => [...c, d.member]);
-    form.reset();
-    setNotice("Collaborator added.");
+    try {
+      const d = await apiFetch<{ member: WorkspaceMember }>(`/projects/${project.id}/members`, {
+        method: "POST",
+        body: JSON.stringify({ email: String(formData.get("email") || ""), role: String(formData.get("role") || "viewer") }),
+      });
+      setMembers((c) => [...c, d.member]);
+      form.reset();
+      setNotice("Collaborator added.");
+    } catch (err: unknown) {
+      const apiErr = err as { message?: string };
+      setError(apiErr?.message || "Could not add collaborator.");
+    }
   }
 
   async function handleRoleChange(memberId: string, role: string) {
     setError(""); setNotice("");
-    const r = await fetch(`/api/projects/${project.id}/members/${memberId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role }),
-    });
-    const d = await r.json();
-    if (!r.ok) { setError(d.error?.message || "Could not update collaborator."); return; }
-    setMembers((c) => c.map((m) => (m.id === memberId ? d.member : m)));
-    setNotice("Collaborator updated.");
+    try {
+      const d = await apiFetch<{ member: WorkspaceMember }>(`/projects/${project.id}/members/${memberId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ role }),
+      });
+      setMembers((c) => c.map((m) => (m.id === memberId ? d.member : m)));
+      setNotice("Collaborator updated.");
+    } catch (err: unknown) {
+      const apiErr = err as { message?: string };
+      setError(apiErr?.message || "Could not update collaborator.");
+    }
   }
 
   async function handleRemoveMember(memberId: string) {
     setError(""); setNotice("");
-    const r = await fetch(`/api/projects/${project.id}/members/${memberId}`, { method: "DELETE" });
-    const d = await r.json();
-    if (!r.ok) { setError(d.error?.message || "Could not remove collaborator."); return; }
-    setMembers((c) => c.filter((m) => m.id !== memberId));
-    setNotice("Collaborator removed.");
+    try {
+      await apiFetch(`/projects/${project.id}/members/${memberId}`, { method: "DELETE" });
+      setMembers((c) => c.filter((m) => m.id !== memberId));
+      setNotice("Collaborator removed.");
+    } catch (err: unknown) {
+      const apiErr = err as { message?: string };
+      setError(apiErr?.message || "Could not remove collaborator.");
+    }
   }
 
   async function handleDeleteProject() {
     setError("");
-    const r = await fetch(`/api/projects/${project.id}`, { method: "DELETE" });
-    if (!r.ok) { const d = await r.json(); setError(d.error?.message || "Could not delete project."); return; }
-    router.push("/dashboard");
-    router.refresh();
+    try {
+      await apiFetch(`/projects/${project.id}`, { method: "DELETE" });
+      router.push("/dashboard");
+      router.refresh();
+    } catch (err: unknown) {
+      const apiErr = err as { message?: string };
+      setError(apiErr?.message || "Could not delete project.");
+    }
   }
 
   async function handlePromptSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(""); setNotice("");
-    const r = await fetch(`/api/projects/${project.id}/prompts`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: promptContent }),
-    });
-    const d = await r.json();
-    if (!r.ok) { setError(d.error?.message || "Could not save prompt."); return; }
-    setPromptContent(d.prompt.content);
-    setNotice("Prompt saved.");
+    try {
+      const d = await apiFetch<{ prompt: { content: string } }>(`/projects/${project.id}/prompts`, {
+        method: "POST",
+        body: JSON.stringify({ content: promptContent }),
+      });
+      setPromptContent(d.prompt.content);
+      setNotice("Prompt saved.");
+    } catch (err: unknown) {
+      const apiErr = err as { message?: string };
+      setError(apiErr?.message || "Could not save prompt.");
+    }
   }
 
   async function handleFileUpload(event: FormEvent<HTMLFormElement>) {
@@ -181,13 +197,17 @@ export function ProjectWorkspaceClient({
     setError(""); setNotice(""); setIsUploading(true);
     const form = event.currentTarget;
     const formData = new FormData(form);
-    const r = await fetch(`/api/projects/${project.id}/files`, { method: "POST", body: formData });
-    const d = await r.json();
-    setIsUploading(false);
-    if (!r.ok) { setError(d.error?.message || "Could not upload file."); return; }
-    setFiles((c) => [d.file, ...c]);
-    form.reset();
-    setNotice("File uploaded.");
+    try {
+      const d = await apiFetch<{ file: WorkspaceProject["files"][number] }>(`/projects/${project.id}/files`, { method: "POST", body: formData });
+      setIsUploading(false);
+      setFiles((c) => [d.file, ...c]);
+      form.reset();
+      setNotice("File uploaded.");
+    } catch (err: unknown) {
+      setIsUploading(false);
+      const apiErr = err as { message?: string };
+      setError(apiErr?.message || "Could not upload file.");
+    }
   }
 
   function toggleSelectedFile(fileId: string) {
@@ -199,16 +219,23 @@ export function ProjectWorkspaceClient({
     const message = chatInput.trim();
     if (!message) return;
     setError(""); setNotice(""); setIsChatting(true); setChatInput("");
-    const r = await fetch(`/api/projects/${project.id}/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversationId, message, fileIds: selectedFileIds }),
-    });
-    const d = await r.json();
-    setIsChatting(false);
-    if (!r.ok) { setError(d.error?.message || "Could not send message."); setChatInput(message); return; }
-    setConversationId(d.conversation.id);
-    setChatMessages((c) => [...c, ...d.messages]);
+    try {
+      const d = await apiFetch<{
+        conversation: { id: string };
+        messages: Array<{ id: string; role: string; content: string }>;
+      }>(`/projects/${project.id}/chat`, {
+        method: "POST",
+        body: JSON.stringify({ conversationId, message, fileIds: selectedFileIds }),
+      });
+      setIsChatting(false);
+      setConversationId(d.conversation.id);
+      setChatMessages((c) => [...c, ...d.messages]);
+    } catch (err: unknown) {
+      setIsChatting(false);
+      const apiErr = err as { message?: string };
+      setError(apiErr?.message || "Could not send message.");
+      setChatInput(message);
+    }
   }
 
   const navItems = [

@@ -11,6 +11,7 @@ import {
   SignOut,
   Stack,
 } from "@phosphor-icons/react";
+import { apiFetch, clearAuthToken } from "@/lib/api";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
@@ -58,27 +59,25 @@ export function DashboardClient({
     setIsCreating(true);
 
     const formData = new FormData(event.currentTarget);
-    const response = await fetch("/api/projects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: String(formData.get("name") || ""),
-        description: String(formData.get("description") || ""),
-      }),
-    });
-    const data = await response.json();
-    setIsCreating(false);
-
-    if (!response.ok) {
-      setError(data.error?.message || "Could not create project.");
-      return;
+    try {
+      const data = await apiFetch<{ project: { id: string } }>("/projects", {
+        method: "POST",
+        body: JSON.stringify({
+          name: String(formData.get("name") || ""),
+          description: String(formData.get("description") || ""),
+        }),
+      });
+      setIsCreating(false);
+      router.push(`/projects/${data.project.id}`);
+    } catch (err: unknown) {
+      setIsCreating(false);
+      const apiErr = err as { message?: string };
+      setError(apiErr?.message || "Could not create project.");
     }
-
-    router.push(`/projects/${data.project.id}`);
   }
 
   async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
+    clearAuthToken();
     router.push("/login");
     router.refresh();
   }
