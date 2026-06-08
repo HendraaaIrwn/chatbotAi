@@ -2,7 +2,8 @@ import { AuthForm } from "@/components/auth-form";
 
 export default function RegisterPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 py-12">
+    <main className="relative flex min-h-[100dvh] w-full max-w-full items-center justify-center overflow-x-hidden bg-[#05060d] px-4 py-6">
+      <div className="shell-noise" />
       <AuthForm mode="register" />
     </main>
   );
