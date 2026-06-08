@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
-from app.models.database import get_db
-from app.models.models import User, ProjectFile
+
 from app.core.deps import get_current_user, get_project_access
+from app.core.errors import AppError
+from app.models.database import get_db
+from app.models.models import ProjectFile, User
 from app.services.file_service import validate_project_upload
 from app.services.openai_service import get_openai_client
-from app.core.errors import AppError
 
 router = APIRouter(tags=["files"])
 

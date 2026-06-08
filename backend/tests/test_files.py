@@ -1,5 +1,6 @@
 from io import BytesIO
-from app.services.file_service import validate_project_upload, MAX_UPLOAD_BYTES
+
+from app.services.file_service import MAX_UPLOAD_BYTES, validate_project_upload
 
 
 class FakeUploadFile:

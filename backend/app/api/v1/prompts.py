@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.models.database import get_db
-from app.models.models import User, Prompt
-from app.schemas.prompt import PromptUpdateRequest, PromptResponse
+
 from app.core.deps import get_current_user, get_project_access
+from app.models.database import get_db
+from app.models.models import Prompt, User
+from app.schemas.prompt import PromptResponse, PromptUpdateRequest
 
 router = APIRouter(tags=["prompts"])
 

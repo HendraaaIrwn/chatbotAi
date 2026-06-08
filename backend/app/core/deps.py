@@ -1,11 +1,11 @@
-from typing import Optional
 from fastapi import Depends, Header
 from sqlalchemy.orm import Session
+
+from app.core.errors import AuthError, ForbiddenError, NotFoundError
+from app.core.roles import ProjectPermission, role_has_permission
+from app.core.security import verify_access_token
 from app.models.database import get_db
 from app.models.models import User
-from app.core.security import verify_access_token
-from app.core.errors import AuthError, ForbiddenError, NotFoundError
-from app.core.roles import role_has_permission, ProjectPermission
 
 
 def get_current_user(
@@ -23,9 +23,9 @@ def get_current_user(
 
 
 def get_current_user_optional(
-    authorization: Optional[str] = Header(None),
+    authorization: str | None = Header(None),
     db: Session = Depends(get_db),
-) -> Optional[User]:
+) -> User | None:
     if not authorization or not authorization.startswith("Bearer "):
         return None
     try:

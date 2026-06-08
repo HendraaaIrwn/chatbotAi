@@ -1,11 +1,11 @@
 import cuid2
-from sqlalchemy import (
-    Column, String, Integer, DateTime, ForeignKey, UniqueConstraint, func, Text
-)
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import relationship
+
 from app.models.database import Base
 
 CUID_GENERATOR = cuid2.Cuid()
+
 
 def generate_cuid():
     return CUID_GENERATOR.generate()
@@ -22,25 +22,19 @@ class User(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     owned_projects = relationship(
-        "Project", back_populates="owner",
-        foreign_keys="Project.owner_id", cascade="all, delete-orphan"
+        "Project",
+        back_populates="owner",
+        foreign_keys="Project.owner_id",
+        cascade="all, delete-orphan",
     )
-    memberships = relationship(
-        "ProjectMember", back_populates="user",
-        cascade="all, delete-orphan"
-    )
+    memberships = relationship("ProjectMember", back_populates="user", cascade="all, delete-orphan")
     uploads = relationship(
-        "ProjectFile", back_populates="uploaded_by",
-        cascade="all, delete-orphan"
+        "ProjectFile", back_populates="uploaded_by", cascade="all, delete-orphan"
     )
     conversations = relationship(
-        "Conversation", back_populates="user",
-        cascade="all, delete-orphan"
+        "Conversation", back_populates="user", cascade="all, delete-orphan"
     )
-    messages = relationship(
-        "Message", back_populates="user",
-        cascade="all, delete-orphan"
-    )
+    messages = relationship("Message", back_populates="user", cascade="all, delete-orphan")
 
 
 class Project(Base):
@@ -53,25 +47,14 @@ class Project(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
-    owner = relationship(
-        "User", back_populates="owned_projects",
-        foreign_keys=[owner_id]
-    )
-    members = relationship(
-        "ProjectMember", back_populates="project",
-        cascade="all, delete-orphan"
-    )
+    owner = relationship("User", back_populates="owned_projects", foreign_keys=[owner_id])
+    members = relationship("ProjectMember", back_populates="project", cascade="all, delete-orphan")
     prompt = relationship(
-        "Prompt", back_populates="project",
-        uselist=False, cascade="all, delete-orphan"
+        "Prompt", back_populates="project", uselist=False, cascade="all, delete-orphan"
     )
-    files = relationship(
-        "ProjectFile", back_populates="project",
-        cascade="all, delete-orphan"
-    )
+    files = relationship("ProjectFile", back_populates="project", cascade="all, delete-orphan")
     conversations = relationship(
-        "Conversation", back_populates="project",
-        cascade="all, delete-orphan"
+        "Conversation", back_populates="project", cascade="all, delete-orphan"
     )
 
 
@@ -99,8 +82,7 @@ class Prompt(Base):
 
     id = Column(String, primary_key=True, default=generate_cuid)
     project_id = Column(
-        String, ForeignKey("projects.id", ondelete="CASCADE"),
-        unique=True, nullable=False
+        String, ForeignKey("projects.id", ondelete="CASCADE"), unique=True, nullable=False
     )
     content = Column(Text, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
@@ -137,10 +119,7 @@ class Conversation(Base):
 
     project = relationship("Project", back_populates="conversations")
     user = relationship("User", back_populates="conversations")
-    messages = relationship(
-        "Message", back_populates="conversation",
-        cascade="all, delete-orphan"
-    )
+    messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
 
 
 class Message(Base):
@@ -148,8 +127,7 @@ class Message(Base):
 
     id = Column(String, primary_key=True, default=generate_cuid)
     conversation_id = Column(
-        String, ForeignKey("conversations.id", ondelete="CASCADE"),
-        nullable=False
+        String, ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False
     )
     user_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     role = Column(String, nullable=False)

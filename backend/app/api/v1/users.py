@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+
 from app.core.deps import get_current_user_optional
 from app.models.models import User
 from app.schemas.user import UserResponse

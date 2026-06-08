@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+
+from app.core.deps import get_current_user
+from app.core.errors import AuthError as AuthErr
+from app.core.errors import ConflictError
+from app.core.security import create_access_token, hash_password, verify_password
 from app.models.database import get_db
 from app.models.models import User
-from app.schemas.auth import RegisterRequest, LoginRequest
-from app.schemas.user import AuthResponse, UserResponse
-from app.core.security import hash_password, verify_password, create_access_token
-from app.core.errors import AuthError as AuthErr, ConflictError
-from app.core.deps import get_current_user
+from app.schemas.auth import LoginRequest, RegisterRequest
+from app.schemas.user import UserResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

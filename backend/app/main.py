@@ -2,10 +2,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.api.v1 import auth, chat, files, members, projects, prompts, users
 from app.core.config import settings
 from app.core.errors import register_error_handlers
-from app.models.database import engine, Base
-from app.api.v1 import auth, users, projects, members, files, prompts, chat
+from app.models.database import Base, engine
 
 
 @asynccontextmanager

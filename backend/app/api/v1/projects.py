@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+
+from app.core.deps import get_current_user, get_project_access
 from app.models.database import get_db
-from app.models.models import User, Project, ProjectMember
+from app.models.models import Project, ProjectMember, User
+from app.schemas.file import FileResponse
 from app.schemas.project import ProjectCreateRequest, ProjectUpdateRequest
 from app.schemas.prompt import PromptResponse
-from app.schemas.file import FileResponse
-from app.core.deps import get_current_user, get_project_access
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -24,15 +25,17 @@ def list_projects(
     projects = []
     for m in memberships:
         p = m.project
-        projects.append({
-            "id": p.id,
-            "name": p.name,
-            "description": p.description,
-            "owner_id": p.owner_id,
-            "role": m.role,
-            "created_at": p.created_at.isoformat(),
-            "updated_at": p.updated_at.isoformat(),
-        })
+        projects.append(
+            {
+                "id": p.id,
+                "name": p.name,
+                "description": p.description,
+                "owner_id": p.owner_id,
+                "role": m.role,
+                "created_at": p.created_at.isoformat(),
+                "updated_at": p.updated_at.isoformat(),
+            }
+        )
     return {"projects": projects}
 
 
@@ -98,7 +101,9 @@ def get_project(
             "role": access["role"],
             "created_at": project.created_at.isoformat(),
             "updated_at": project.updated_at.isoformat(),
-            "prompt": PromptResponse.model_validate(project.prompt).model_dump() if project.prompt else None,
+            "prompt": PromptResponse.model_validate(project.prompt).model_dump()
+            if project.prompt
+            else None,
             "files": [FileResponse.model_validate(f).model_dump() for f in project.files],
             "members": [
                 {

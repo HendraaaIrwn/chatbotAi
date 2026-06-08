@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
 from sqlalchemy import exc as sa_exc
-from app.models.database import get_db
-from app.models.models import User, Project, ProjectMember
-from app.schemas.member import MemberCreateRequest, MemberUpdateRequest
+from sqlalchemy.orm import Session
+
 from app.core.deps import get_current_user, get_project_access
-from app.core.errors import NotFoundError, ForbiddenError, ConflictError, AppError
+from app.core.errors import AppError, ConflictError, ForbiddenError, NotFoundError
+from app.models.database import get_db
+from app.models.models import Project, ProjectMember, User
+from app.schemas.member import MemberCreateRequest, MemberUpdateRequest
 
 router = APIRouter(tags=["members"])
 
@@ -67,7 +68,7 @@ def add_member(
         db.refresh(member)
     except sa_exc.IntegrityError:
         db.rollback()
-        raise ConflictError("This user is already a project member.")
+        raise ConflictError("This user is already a project member.") from None
 
     return {
         "member": {

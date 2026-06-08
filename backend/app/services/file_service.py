@@ -19,7 +19,7 @@ def validate_project_upload(file: UploadFile) -> str | None:
     if not filename:
         return "No filename provided."
 
-    extension = filename[filename.rfind("."):].lower()
+    extension = filename[filename.rfind(".") :].lower()
     if not extension or extension not in ALLOWED_EXTENSIONS:
         return "Only PDF, TXT, Markdown, CSV, JSON, and DOCX files are allowed."
 

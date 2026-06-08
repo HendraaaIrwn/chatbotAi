@@ -1,15 +1,18 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+
+from app.core.deps import get_current_user, get_project_access
+from app.core.errors import AppError, NotFoundError
 from app.models.database import get_db
 from app.models.models import (
-    User, Conversation, Message, Prompt, ProjectFile,
+    Conversation,
+    Message,
+    ProjectFile,
+    Prompt,
+    User,
 )
 from app.schemas.chat import ChatRequest
-from app.core.deps import get_current_user, get_project_access
-from app.core.errors import NotFoundError, AppError
-from app.services.openai_service import (
-    get_openai_client, get_openai_model, build_chat_input
-)
+from app.services.openai_service import build_chat_input, get_openai_client, get_openai_model
 
 router = APIRouter(tags=["chat"])
 
@@ -28,13 +31,17 @@ def chat(
     prompt = db.query(Prompt).filter(Prompt.project_id == project_id).first()
 
     selected_files = (
-        db.query(ProjectFile)
-        .filter(
-            ProjectFile.project_id == project_id,
-            ProjectFile.id.in_(selected_file_ids),
+        (
+            db.query(ProjectFile)
+            .filter(
+                ProjectFile.project_id == project_id,
+                ProjectFile.id.in_(selected_file_ids),
+            )
+            .all()
         )
-        .all()
-    ) if selected_file_ids else []
+        if selected_file_ids
+        else []
+    )
 
     if len(selected_files) != len(selected_file_ids):
         raise AppError(
@@ -93,19 +100,19 @@ def chat(
             input=build_chat_input(
                 [{"role": m.role, "content": m.content} for m in history],
                 body.message,
-                [
-                    {"openai_file_id": f.openai_file_id}
-                    for f in selected_files
-                ],
+                [{"openai_file_id": f.openai_file_id} for f in selected_files],
             ),
         )
     except Exception as e:
         from openai import APIError
+
         if isinstance(e, APIError):
-            raise AppError("server_error", str(e), 502)
+            raise AppError("server_error", str(e), 502) from e
         raise
 
-    assistant_text = response.output_text.strip() if response.output_text else "I could not generate a response."
+    assistant_text = (
+        response.output_text.strip() if response.output_text else "I could not generate a response."
+    )
 
     assistant_message = Message(
         conversation_id=conversation.id,

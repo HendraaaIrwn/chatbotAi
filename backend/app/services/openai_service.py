@@ -1,10 +1,12 @@
 from functools import lru_cache
+
 from openai import OpenAI
+
 from app.core.config import settings
 from app.core.errors import OpenAIConfigError
 
 
-@lru_cache()
+@lru_cache
 def get_openai_client() -> OpenAI:
     if not settings.OPENAI_API_KEY:
         raise OpenAIConfigError(
