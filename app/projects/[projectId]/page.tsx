@@ -5,7 +5,7 @@ import {
   type WorkspaceProject,
 } from "@/components/project-workspace-client";
 import { apiFetch } from "@/lib/api";
-import { notFound } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
 
 type PageProps = { params: Promise<{ projectId: string }> };
@@ -17,13 +17,14 @@ type ProjectResponse = {
     description: string | null;
     role: string;
     prompt: { id: string; content: string; updated_at: string } | null;
-    files: { id: string; filename: string; mimeType: string; bytes: number; openaiFileId: string | null; created_at: string }[];
+    files: { id: string; filename: string; mime_type: string; bytes: number; openai_file_id: string; created_at: string }[];
     members: { id: string; role: string; user: { id: string; email: string; name: string | null } }[];
   };
 };
 
 export default function ProjectPage({ params }: PageProps) {
   const { projectId } = use(params);
+  const router = useRouter();
   const [project, setProject] = useState<WorkspaceProject | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,9 +46,9 @@ export default function ProjectPage({ params }: PageProps) {
           files: p.files.map((f) => ({
             id: f.id,
             filename: f.filename,
-            mimeType: f.mimeType,
+            mimeType: f.mime_type,
             bytes: f.bytes,
-            openaiFileId: f.openaiFileId ?? "",
+            openaiFileId: f.openai_file_id,
             createdAt: f.created_at,
           })),
         });
@@ -55,11 +56,12 @@ export default function ProjectPage({ params }: PageProps) {
       .catch((err: unknown) => {
         const apiErr = err as { code?: string };
         if (apiErr.code === "not_found") {
-          notFound();
+          router.push("/dashboard");
+          return;
         }
         setError("Failed to load project");
       });
-  }, [projectId]);
+  }, [projectId, router]);
 
   if (error) {
     return (
