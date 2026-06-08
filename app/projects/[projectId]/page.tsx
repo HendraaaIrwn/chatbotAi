@@ -31,6 +31,24 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       id: true,
       name: true,
       description: true,
+      prompt: {
+        select: {
+          id: true,
+          content: true,
+          updatedAt: true,
+        },
+      },
+      files: {
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          filename: true,
+          mimeType: true,
+          bytes: true,
+          openaiFileId: true,
+          createdAt: true,
+        },
+      },
       members: {
         orderBy: { createdAt: "asc" },
         select: {
@@ -49,6 +67,16 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   const workspaceProject: WorkspaceProject = {
     ...project,
     role: access.role,
+    prompt: project.prompt
+      ? {
+          ...project.prompt,
+          updatedAt: project.prompt.updatedAt.toISOString(),
+        }
+      : null,
+    files: project.files.map((file) => ({
+      ...file,
+      createdAt: file.createdAt.toISOString(),
+    })),
   };
 
   return <ProjectWorkspaceClient initialProject={workspaceProject} />;
