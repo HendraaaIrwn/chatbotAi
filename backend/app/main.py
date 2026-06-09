@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import auth, chat, files, members, projects, prompts, users
+from app.api.v1 import auth, chat, conversations, files, members, projects, prompts, users
 from app.core.config import settings
 from app.core.errors import register_error_handlers
 from app.models.database import Base, engine
@@ -41,6 +41,7 @@ app.include_router(members.router, prefix="/api/v1")
 app.include_router(files.router, prefix="/api/v1")
 app.include_router(prompts.router, prefix="/api/v1")
 app.include_router(chat.router, prefix="/api/v1")
+app.include_router(conversations.router, prefix="/api/v1")
 
 
 @app.get("/api/v1/health")

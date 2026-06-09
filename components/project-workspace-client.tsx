@@ -18,7 +18,7 @@ import {
 import { apiFetch } from "@/lib/api";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type WorkspaceMember = {
   id: string;
@@ -95,6 +95,44 @@ export function ProjectWorkspaceClient({
   const [isChatting, setIsChatting] = useState(false);
   const canEdit = project.role === "owner" || project.role === "editor";
   const canManageMembers = project.role === "owner";
+
+  type ConversationItem = { id: string; title: string | null; updated_at: string };
+  const [conversations, setConversations] = useState<ConversationItem[]>([]);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+
+  // Load conversations on mount, auto-load latest
+  useEffect(() => {
+    apiFetch<{ conversations: ConversationItem[] }>(`/projects/${project.id}/conversations`)
+      .then((data) => {
+        setConversations(data.conversations);
+        if (data.conversations.length > 0) {
+          loadConversationMessages(data.conversations[0].id);
+        }
+      })
+      .catch(() => {});
+  }, [project.id]);
+
+  async function loadConversationMessages(cid: string) {
+    setIsLoadingMessages(true);
+    try {
+      const data = await apiFetch<{
+        conversation: { id: string; title: string | null };
+        messages: Array<{ id: string; role: string; content: string }>;
+      }>(`/projects/${project.id}/conversations/${cid}/messages`);
+      setConversationId(data.conversation.id);
+      setChatMessages(data.messages);
+    } catch {
+      setError("Failed to load conversation.");
+    } finally {
+      setIsLoadingMessages(false);
+    }
+  }
+
+  function handleNewChat() {
+    setConversationId(null);
+    setChatMessages([]);
+    setChatInput("");
+  }
 
   const selectedFiles = useMemo(
     () => files.filter((file) => selectedFileIds.includes(file.id)),
@@ -291,7 +329,21 @@ export function ProjectWorkspaceClient({
                 ),
               );
             } else if (event.type === "done") {
-              setConversationId(event.conversation?.id || conversationId);
+              const newCid = event.conversation?.id || conversationId;
+              setConversationId(newCid);
+
+              // Add new conversation to list if it was freshly created
+              if (!conversationId && newCid && event.conversation?.title) {
+                setConversations((prev) => [
+                  {
+                    id: newCid,
+                    title: event.conversation.title,
+                    updated_at: new Date().toISOString(),
+                  },
+                  ...prev,
+                ]);
+              }
+
               setChatMessages((c) =>
                 c.map((m) => {
                   if (m.id === tempUserId && event.user_message_id) {
@@ -370,6 +422,43 @@ export function ProjectWorkspaceClient({
             })}
           </nav>
 
+          {/* ── Conversations ── */}
+          <div className="mt-8 flex-1 overflow-y-auto">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <p className="text-xs font-medium uppercase tracking-wider text-white/30">History</p>
+              <button
+                type="button"
+                onClick={handleNewChat}
+                className="glass-button grid h-7 w-7 place-items-center rounded-full text-white/48 hover:text-white/78"
+                aria-label="New chat"
+              >
+                <Plus size={14} weight="regular" />
+              </button>
+            </div>
+            <div className="space-y-1">
+              {conversations.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    if (c.id !== conversationId) loadConversationMessages(c.id);
+                  }}
+                  className={cx(
+                    "w-full truncate rounded-xl px-3 py-2 text-left text-sm transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
+                    c.id === conversationId
+                      ? "bg-white/[0.07] text-white"
+                      : "text-white/42 hover:bg-white/[0.04] hover:text-white/68",
+                  )}
+                >
+                  {c.title || "Untitled"}
+                </button>
+              ))}
+              {conversations.length === 0 && (
+                <p className="px-3 py-2 text-xs text-white/20">No conversations yet.</p>
+              )}
+            </div>
+          </div>
+
           <div className="mt-auto">
             <div className="panel rounded-2xl p-4">
               <div className="flex items-center gap-3">
@@ -417,7 +506,14 @@ export function ProjectWorkspaceClient({
                   <section id="chat" className="relative z-10 flex min-h-0 flex-1 flex-col">
                     <div className="flex min-h-0 flex-1 flex-col">
                       <div className="flex-1 overflow-y-auto pb-4">
-                        {chatMessages.length ? (
+                        {isLoadingMessages ? (
+                          <div className="flex min-h-[calc(84vh-12rem)] items-center justify-center">
+                            <div className="mx-auto grid max-w-3xl place-items-center text-center">
+                              <AssistantOrb />
+                              <p className="mt-6 text-sm text-white/40">Loading conversation...</p>
+                            </div>
+                          </div>
+                        ) : chatMessages.length ? (
                           <div className="mx-auto w-full max-w-3xl space-y-3">
                             {chatMessages.map((msg) => (
                               <div
