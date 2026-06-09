@@ -1,0 +1,14 @@
+node_modules
+.next
+next-env.d.ts
+out
+dist
+coverage
+.env
+.env.local
+*.log
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+backend/dev.db
