@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+.vercel
+.next
+node_modules
+coverage
+*.log
+dev.db
+backend/dev.db

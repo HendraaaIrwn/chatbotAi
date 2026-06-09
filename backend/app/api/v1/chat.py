@@ -11,6 +11,7 @@ from app.models.database import get_db
 from app.models.models import (
     Conversation,
     Message,
+    Project,
     ProjectFile,
     Prompt,
     User,
@@ -36,6 +37,10 @@ def chat(
     get_project_access(project_id, "edit", user, db)
 
     selected_file_ids = list(dict.fromkeys(body.file_ids))
+
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise NotFoundError("Project not found.")
 
     prompt = db.query(Prompt).filter(Prompt.project_id == project_id).first()
 
@@ -99,10 +104,13 @@ def chat(
     db.commit()
     db.refresh(user_message)
 
-    client = get_openai_client()
     base_instructions = prompt.content if prompt else "You are a helpful project assistant."
     instructions = (
-        build_guardrail_instructions(base_instructions)
+        build_guardrail_instructions(
+            base_instructions,
+            project_name=project.name,
+            project_description=project.description,
+        )
         if settings.GUARDRAIL_ENABLED
         else base_instructions
     )
@@ -139,6 +147,8 @@ def chat(
                     },
                 ],
             }
+
+    client = get_openai_client()
 
     chat_input = build_chat_input(
         [{"role": m.role, "content": m.content} for m in history],
@@ -214,6 +224,7 @@ def _stream_response(client, chat_input, instructions, base_instructions, user_m
         full_text = ""
         response_id = None
         guardrail_hit = False
+        buffer_output = settings.GUARDRAIL_ENABLED and settings.GUARDRAIL_OUTPUT_CHECK
 
         # Send user message first
         yield sse_event("user_message", {
@@ -236,7 +247,8 @@ def _stream_response(client, chat_input, instructions, base_instructions, user_m
             for event in stream:
                 if event.type == "response.output_text.delta":
                     full_text += event.delta
-                    yield sse_event("delta", {"content": event.delta})
+                    if not buffer_output:
+                        yield sse_event("delta", {"content": event.delta})
 
                 elif event.type == "response.completed":
                     response_id = event.response.id
@@ -258,6 +270,8 @@ def _stream_response(client, chat_input, instructions, base_instructions, user_m
                 guardrail_hit = True
                 final_text = guardrail_replacement
                 yield sse_event("guardrail_triggered", {"content": guardrail_replacement})
+            elif buffer_output:
+                yield sse_event("delta", {"content": final_text})
 
         assistant_message = Message(
             conversation_id=conversation.id,
