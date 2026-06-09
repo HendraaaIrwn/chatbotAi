@@ -318,97 +318,101 @@ export function ProjectWorkspaceClient({
               </div>
             </header>
 
-            <div className="relative z-10 grid flex-1 gap-6 px-4 pb-6 pt-6 sm:px-7 xl:grid-cols-[1fr_380px]">
+            <div className="relative z-10 grid flex-1 gap-6 px-4 pb-6 pt-6 sm:px-7 xl:grid-cols-[1fr_380px] overflow-y-auto">
               {/* ── Chat Section (Double-Bezel) ── */}
               <div className="bezel-shell max-h-[84vh]">
-                <div className="bezel-shell-inner relative flex min-h-[84vh] flex-col overflow-hidden p-4 sm:p-6">
+                <div className="bezel-shell-inner relative flex max-h-[84vh] flex-col overflow-hidden p-4 sm:p-6">
                   <div className="ambient-glow-top" />
-                  <section id="chat" className="relative z-10 flex flex-1 flex-col">
-                <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-end">
-                  <div className="flex flex-1 flex-col justify-center pb-8">
-                    {chatMessages.length ? (
-                      <div className="mx-auto w-full max-w-3xl space-y-3">
-                        {chatMessages.map((msg) => (
-                          <div
-                            key={msg.id}
-                            className={cx(
-                              "max-w-[85%] rounded-2xl border px-4 py-3.5 text-sm leading-6",
-                              msg.role === "assistant"
-                                ? "border-white/[0.05] bg-white/[0.03] text-white/82"
-                                : "ml-auto border-accent/16 bg-accent-soft text-white",
-                            )}
-                          >
-                            <p className="mb-1.5 flex items-center gap-2 text-xs font-medium text-white/38">
-                              {msg.role === "assistant" ? <Robot size={13} weight="regular" /> : <ChatCircleText size={13} weight="regular" />}
-                              {msg.role}
-                            </p>
-                            <p className="whitespace-pre-wrap">{msg.content}</p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="mx-auto grid max-w-3xl place-items-center text-center">
-                        <div className="relative mb-8">
-                          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[length:16px_16px] opacity-30 [mask-image:radial-gradient(circle,black,transparent_66%)]" />
-                          <AssistantOrb />
-                        </div>
-                        <p className="font-display text-3xl font-semibold tracking-tight text-white/68">Let&apos;s get started.</p>
-                        <h1 className="font-display mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-white/66 sm:text-5xl">
-                          How can I assist you today?
-                        </h1>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* ── Chat Input (.panel) ── */}
-                  <div className="panel mx-auto w-full max-w-4xl rounded-2xl p-4">
-                    <form onSubmit={handleChatSubmit}>
-                      <div className="flex items-start gap-3">
-                        <Sparkle size={21} weight="fill" className="mt-2 shrink-0 text-white/62" />
-                        <textarea
-                          value={chatInput}
-                          onChange={(e) => setChatInput(e.target.value)}
-                          rows={3}
-                          className="min-h-28 flex-1 resize-none bg-transparent text-base leading-7 text-white outline-none placeholder:text-white/36"
-                          placeholder="Ask me anything..."
-                        />
-                      </div>
-                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex min-w-0 flex-wrap items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => document.getElementById("files")?.scrollIntoView({ behavior: "smooth" })}
-                            className="glass-button grid h-9 w-9 place-items-center rounded-full text-white/62"
-                            aria-label="Add file context"
-                          >
-                            <Plus size={16} weight="regular" />
-                          </button>
-                          {selectedFiles.length > 0 &&
-                            selectedFiles.slice(0, 3).map((file) => (
-                              <button
-                                key={file.id}
-                                type="button"
-                                onClick={() => toggleSelectedFile(file.id)}
-                                className="glass-button max-w-[12rem] truncate rounded-full px-3 py-1.5 text-xs text-white/48"
-                                title={file.filename}
+                  <section id="chat" className="relative z-10 flex min-h-0 flex-1 flex-col">
+                    <div className="flex min-h-0 flex-1 flex-col">
+                      <div className="flex-1 overflow-y-auto pb-4">
+                        {chatMessages.length ? (
+                          <div className="mx-auto w-full max-w-3xl space-y-3">
+                            {chatMessages.map((msg) => (
+                              <div
+                                key={msg.id}
+                                className={cx(
+                                  "max-w-[85%] rounded-2xl border px-4 py-3.5 text-sm leading-6",
+                                  msg.role === "assistant"
+                                    ? "border-white/[0.05] bg-white/[0.03] text-white/82"
+                                    : "ml-auto border-accent/16 bg-accent-soft text-white",
+                                )}
                               >
-                                {file.filename}
-                              </button>
+                                <p className="mb-1.5 flex items-center gap-2 text-xs font-medium text-white/38">
+                                  {msg.role === "assistant" ? <Robot size={13} weight="regular" /> : <ChatCircleText size={13} weight="regular" />}
+                                  {msg.role}
+                                </p>
+                                <p className="whitespace-pre-wrap">{msg.content}</p>
+                              </div>
                             ))}
-                        </div>
-                        <button
-                          type="submit"
-                          disabled={isChatting || !chatInput.trim()}
-                          className="accent-btn grid h-10 w-10 place-items-center rounded-full p-0 text-[#020205] disabled:opacity-30 disabled:shadow-none"
-                          aria-label="Send message"
-                        >
-                          <ArrowUp size={17} weight="bold" />
-                        </button>
+                          </div>
+                        ) : (
+                          <div className="flex min-h-[calc(84vh-12rem)] items-center justify-center">
+                            <div className="mx-auto grid max-w-3xl place-items-center text-center">
+                              <div className="relative mb-8">
+                                <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[length:16px_16px] opacity-30 [mask-image:radial-gradient(circle,black,transparent_66%)]" />
+                                <AssistantOrb />
+                              </div>
+                              <p className="font-display text-3xl font-semibold tracking-tight text-white/68">Let&apos;s get started.</p>
+                              <h1 className="font-display mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-white/66 sm:text-5xl">
+                                How can I assist you today?
+                              </h1>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </form>
-                  </div>
-                </div>
-              </section>
+
+                      {/* ── Chat Input (.panel) — sticky bottom ── */}
+                      <div className="shrink-0 border-t border-white/[0.06] pt-4">
+                        <div className="panel mx-auto w-full max-w-4xl rounded-2xl p-4">
+                          <form onSubmit={handleChatSubmit}>
+                            <div className="flex items-start gap-3">
+                              <Sparkle size={21} weight="fill" className="mt-2 shrink-0 text-white/62" />
+                              <textarea
+                                value={chatInput}
+                                onChange={(e) => setChatInput(e.target.value)}
+                                rows={3}
+                                className="min-h-28 flex-1 resize-none bg-transparent text-base leading-7 text-white outline-none placeholder:text-white/36"
+                                placeholder="Ask me anything..."
+                              />
+                            </div>
+                            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => document.getElementById("files")?.scrollIntoView({ behavior: "smooth" })}
+                                  className="glass-button grid h-9 w-9 place-items-center rounded-full text-white/62"
+                                  aria-label="Add file context"
+                                >
+                                  <Plus size={16} weight="regular" />
+                                </button>
+                                {selectedFiles.length > 0 &&
+                                  selectedFiles.slice(0, 3).map((file) => (
+                                    <button
+                                      key={file.id}
+                                      type="button"
+                                      onClick={() => toggleSelectedFile(file.id)}
+                                      className="glass-button max-w-[12rem] truncate rounded-full px-3 py-1.5 text-xs text-white/48"
+                                      title={file.filename}
+                                    >
+                                      {file.filename}
+                                    </button>
+                                  ))}
+                              </div>
+                              <button
+                                type="submit"
+                                disabled={isChatting || !chatInput.trim()}
+                                className="accent-btn grid h-10 w-10 place-items-center rounded-full p-0 text-[#020205] disabled:opacity-30 disabled:shadow-none"
+                                aria-label="Send message"
+                              >
+                                <ArrowUp size={17} weight="bold" />
+                              </button>
+                            </div>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
                 </div>
               </div>
 
