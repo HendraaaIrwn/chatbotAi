@@ -500,12 +500,12 @@ export function ProjectWorkspaceClient({
 
             <div className="relative z-10 grid flex-1 gap-6 px-4 pb-6 pt-6 sm:px-7 xl:grid-cols-[1fr_380px] overflow-y-auto">
               {/* ── Chat Section (Double-Bezel) ── */}
-              <div className="bezel-shell max-h-[84vh] min-h-[84vh]">
-                <div className="bezel-shell-inner relative flex max-h-[84vh] flex-col overflow-hidden p-4 sm:p-6">
+              <div className="bezel-shell flex min-h-[84vh] flex-col">
+                <div className="bezel-shell-inner relative flex flex-1 flex-col overflow-hidden p-4 sm:p-6">
                   <div className="ambient-glow-top" />
                   <section id="chat" className="relative z-10 flex min-h-0 flex-1 flex-col">
                     <div className="flex min-h-0 flex-1 flex-col">
-                      <div className="flex-1 overflow-y-auto pb-4">
+                      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-4">
                         {isLoadingMessages ? (
                           <div className="flex min-h-[calc(84vh-12rem)] items-center justify-center">
                             <div className="mx-auto grid max-w-3xl place-items-center text-center">
@@ -514,7 +514,7 @@ export function ProjectWorkspaceClient({
                             </div>
                           </div>
                         ) : chatMessages.length ? (
-                          <div className="mx-auto w-full max-w-3xl space-y-3">
+                          <div className="mx-auto w-full max-w-3xl min-h-full space-y-3">
                             {chatMessages.map((msg) => (
                               <div
                                 key={msg.id}
