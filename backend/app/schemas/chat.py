@@ -7,6 +7,7 @@ class ChatRequest(BaseModel):
     conversation_id: str | None = Field(None, min_length=1)
     message: str = Field(..., min_length=1, max_length=4000)
     file_ids: list[str] = Field(default_factory=list, max_length=10)
+    stream: bool = False
 
 
 class MessageResponse(BaseModel):

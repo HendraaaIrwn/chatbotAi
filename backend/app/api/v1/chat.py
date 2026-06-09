@@ -1,4 +1,7 @@
+import json
+
 from fastapi import APIRouter, Depends
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user, get_project_access
@@ -92,16 +95,21 @@ def chat(
     db.refresh(user_message)
 
     client = get_openai_client()
+    instructions = prompt.content if prompt else "You are a helpful project assistant."
+    chat_input = build_chat_input(
+        [{"role": m.role, "content": m.content} for m in history],
+        body.message,
+        [{"openai_file_id": f.openai_file_id} for f in selected_files],
+    )
+
+    if body.stream:
+        return _stream_response(client, chat_input, instructions, conversation, user_message, db)
 
     try:
         response = client.responses.create(
             model=get_openai_model(),
-            instructions=prompt.content if prompt else "You are a helpful project assistant.",
-            input=build_chat_input(
-                [{"role": m.role, "content": m.content} for m in history],
-                body.message,
-                [{"openai_file_id": f.openai_file_id} for f in selected_files],
-            ),
+            instructions=instructions,
+            input=chat_input,
         )
     except Exception as e:
         from openai import APIError
@@ -146,3 +154,85 @@ def chat(
         ],
         "response_id": response.id,
     }
+
+
+def _stream_response(client, chat_input, instructions, conversation, user_message, db):
+    def sse_event(event_type: str, data: dict) -> str:
+        payload = {"type": event_type, **data}
+        return f"data: {json.dumps(payload)}\n\n"
+
+    def generate():
+        full_text = ""
+        response_id = None
+
+        # Send user message first
+        yield sse_event("user_message", {
+            "message": {
+                "id": user_message.id,
+                "role": user_message.role,
+                "content": user_message.content,
+                "created_at": user_message.created_at.isoformat(),
+            },
+        })
+
+        try:
+            stream = client.responses.create(
+                model=get_openai_model(),
+                instructions=instructions,
+                input=chat_input,
+                stream=True,
+            )
+
+            for event in stream:
+                if event.type == "response.output_text.delta":
+                    full_text += event.delta
+                    yield sse_event("delta", {"content": event.delta})
+
+                elif event.type == "response.completed":
+                    response_id = event.response.id
+
+        except Exception as e:
+            from openai import APIError
+
+            if isinstance(e, APIError):
+                yield sse_event("error", {"message": str(e)})
+            else:
+                yield sse_event("error", {"message": "Something went wrong."})
+            return
+
+        # Save assistant message to DB
+        final_text = full_text.strip() if full_text else "I could not generate a response."
+        assistant_message = Message(
+            conversation_id=conversation.id,
+            role="assistant",
+            content=final_text,
+            response_id=response_id,
+        )
+        db.add(assistant_message)
+        db.commit()
+        db.refresh(assistant_message)
+
+        yield sse_event("done", {
+            "conversation": {
+                "id": conversation.id,
+                "title": conversation.title,
+            },
+            "message": {
+                "id": assistant_message.id,
+                "role": assistant_message.role,
+                "content": assistant_message.content,
+                "response_id": assistant_message.response_id,
+                "created_at": assistant_message.created_at.isoformat(),
+            },
+            "response_id": response_id,
+        })
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

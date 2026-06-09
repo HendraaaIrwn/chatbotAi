@@ -218,23 +218,114 @@ export function ProjectWorkspaceClient({
     event.preventDefault();
     const message = chatInput.trim();
     if (!message) return;
-    setError(""); setNotice(""); setIsChatting(true); setChatInput("");
+    setError("");
+    setNotice("");
+    setIsChatting(true);
+    setChatInput("");
+
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+
+    const tempUserId = crypto.randomUUID();
+    setChatMessages((c) => [
+      ...c,
+      { id: tempUserId, role: "user", content: message },
+    ]);
+
+    const tempAssistantId = crypto.randomUUID();
+    setChatMessages((c) => [
+      ...c,
+      { id: tempAssistantId, role: "assistant", content: "" },
+    ]);
+
     try {
-      const d = await apiFetch<{
-        conversation: { id: string };
-        messages: Array<{ id: string; role: string; content: string }>;
-      }>(`/projects/${project.id}/chat`, {
+      const res = await fetch(`${BASE_URL}/projects/${project.id}/chat`, {
         method: "POST",
-        body: JSON.stringify({ conversationId, message, fileIds: selectedFileIds }),
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          conversationId,
+          message,
+          fileIds: selectedFileIds,
+          stream: true,
+        }),
       });
-      setIsChatting(false);
-      setConversationId(d.conversation.id);
-      setChatMessages((c) => [...c, ...d.messages]);
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: { message: "Chat failed" } }));
+        throw err.error || { message: "Chat failed" };
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("No response stream");
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let assistantContent = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6);
+          if (!jsonStr) continue;
+
+          try {
+            const event = JSON.parse(jsonStr);
+
+            if (event.type === "delta") {
+              assistantContent += event.content;
+              setChatMessages((c) =>
+                c.map((m) =>
+                  m.id === tempAssistantId
+                    ? { ...m, content: assistantContent }
+                    : m,
+                ),
+              );
+            } else if (event.type === "done") {
+              setConversationId(event.conversation?.id || conversationId);
+              setChatMessages((c) =>
+                c.map((m) => {
+                  if (m.id === tempUserId && event.message) {
+                    return {
+                      id: event.message.id || m.id,
+                      role: m.role,
+                      content: m.content,
+                    };
+                  }
+                  if (m.id === tempAssistantId && event.message) {
+                    return {
+                      id: event.message.id || m.id,
+                      role: m.role,
+                      content: event.message.content || m.content,
+                    };
+                  }
+                  return m;
+                }),
+              );
+            } else if (event.type === "error") {
+              setError(event.message || "Stream error");
+            }
+          } catch {
+            // skip malformed JSON in stream
+          }
+        }
+      }
     } catch (err: unknown) {
-      setIsChatting(false);
       const apiErr = err as { message?: string };
       setError(apiErr?.message || "Could not send message.");
+      setChatMessages((c) => c.filter((m) => m.id !== tempAssistantId));
       setChatInput(message);
+    } finally {
+      setIsChatting(false);
     }
   }
 
@@ -320,7 +411,7 @@ export function ProjectWorkspaceClient({
 
             <div className="relative z-10 grid flex-1 gap-6 px-4 pb-6 pt-6 sm:px-7 xl:grid-cols-[1fr_380px] overflow-y-auto">
               {/* ── Chat Section (Double-Bezel) ── */}
-              <div className="bezel-shell max-h-[84vh]">
+              <div className="bezel-shell max-h-[84vh] min-h-[84vh]">
                 <div className="bezel-shell-inner relative flex max-h-[84vh] flex-col overflow-hidden p-4 sm:p-6">
                   <div className="ambient-glow-top" />
                   <section id="chat" className="relative z-10 flex min-h-0 flex-1 flex-col">
