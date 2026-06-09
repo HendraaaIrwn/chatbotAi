@@ -13,12 +13,14 @@ import {
   ShieldCheck,
   Sparkle,
   Stack,
+  X,
+  Trash,
   Users,
 } from "@phosphor-icons/react";
 import { apiFetch } from "@/lib/api";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 type WorkspaceMember = {
   id: string;
@@ -51,8 +53,27 @@ export type WorkspaceProject = {
   }>;
 };
 
+type ActiveUser = {
+  id: string;
+  email: string;
+  name: string | null;
+};
+
 type ProjectWorkspaceClientProps = {
   initialProject: WorkspaceProject;
+  initialUser: ActiveUser;
+};
+
+type UploadedProjectFile = {
+  id: string;
+  filename: string;
+  mime_type?: string;
+  mimeType?: string;
+  bytes: number;
+  openai_file_id?: string;
+  openaiFileId?: string;
+  created_at?: string;
+  createdAt?: string;
 };
 
 function cx(...classes: Array<string | false | null | undefined>) {
@@ -73,11 +94,25 @@ function initials(value: string) {
     .join("");
 }
 
+function normalizeProjectFile(file: UploadedProjectFile): WorkspaceProject["files"][number] {
+  return {
+    id: file.id,
+    filename: file.filename,
+    mimeType: file.mimeType || file.mime_type || "application/octet-stream",
+    bytes: file.bytes,
+    openaiFileId: file.openaiFileId || file.openai_file_id || "",
+    createdAt: file.createdAt || file.created_at || new Date().toISOString(),
+  };
+}
+
 export function ProjectWorkspaceClient({
   initialProject,
+  initialUser,
 }: ProjectWorkspaceClientProps) {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [project, setProject] = useState(initialProject);
+  const [activeUser] = useState(initialUser);
   const [members, setMembers] = useState(initialProject.members);
   const [promptContent, setPromptContent] = useState(
     initialProject.prompt?.content || "You are a helpful project assistant.",
@@ -93,8 +128,10 @@ export function ProjectWorkspaceClient({
   const [notice, setNotice] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isChatting, setIsChatting] = useState(false);
+  const [isFileMenuOpen, setIsFileMenuOpen] = useState(false);
   const canEdit = project.role === "owner" || project.role === "editor";
   const canManageMembers = project.role === "owner";
+  const activeUserName = activeUser.name || activeUser.email;
 
   type ConversationItem = { id: string; title: string | null; updated_at: string };
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
@@ -132,6 +169,21 @@ export function ProjectWorkspaceClient({
     setConversationId(null);
     setChatMessages([]);
     setChatInput("");
+    setSelectedFileIds([]);
+    setIsFileMenuOpen(false);
+  }
+
+  async function handleDeleteConversation(cid: string) {
+    if (!confirm("Hapus percakapan ini?")) return;
+    try {
+      await apiFetch(`/projects/${project.id}/conversations/${cid}`, { method: "DELETE" });
+      setConversations((prev) => prev.filter((c) => c.id !== cid));
+      if (cid === conversationId) {
+        handleNewChat();
+      }
+    } catch {
+      setError("Gagal menghapus percakapan.");
+    }
   }
 
   const selectedFiles = useMemo(
@@ -230,17 +282,22 @@ export function ProjectWorkspaceClient({
     }
   }
 
-  async function handleFileUpload(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handleFileUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+    if (!file) return;
+
     setError(""); setNotice(""); setIsUploading(true);
-    const form = event.currentTarget;
-    const formData = new FormData(form);
+    const formData = new FormData();
+    formData.append("file", file);
     try {
-      const d = await apiFetch<{ file: WorkspaceProject["files"][number] }>(`/projects/${project.id}/files`, { method: "POST", body: formData });
+      const d = await apiFetch<{ file: UploadedProjectFile }>(`/projects/${project.id}/files`, { method: "POST", body: formData });
+      const uploadedFile = normalizeProjectFile(d.file);
       setIsUploading(false);
-      setFiles((c) => [d.file, ...c]);
-      form.reset();
-      setNotice("File uploaded.");
+      setFiles((c) => [uploadedFile, ...c.filter((item) => item.id !== uploadedFile.id)]);
+      setSelectedFileIds((c) => c.includes(uploadedFile.id) ? c : [uploadedFile.id, ...c]);
+      setIsFileMenuOpen(false);
+      setNotice("File attached.");
     } catch (err: unknown) {
       setIsUploading(false);
       const apiErr = err as { message?: string };
@@ -250,6 +307,10 @@ export function ProjectWorkspaceClient({
 
   function toggleSelectedFile(fileId: string) {
     setSelectedFileIds((c) => c.includes(fileId) ? c.filter((id) => id !== fileId) : [...c, fileId]);
+  }
+
+  function removeSelectedFile(fileId: string) {
+    setSelectedFileIds((c) => c.filter((id) => id !== fileId));
   }
 
   async function handleChatSubmit(event: FormEvent<HTMLFormElement>) {
@@ -284,9 +345,9 @@ export function ProjectWorkspaceClient({
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          conversationId,
+          conversation_id: conversationId,
           message,
-          fileIds: selectedFileIds,
+          file_ids: selectedFileIds,
           stream: true,
         }),
       });
@@ -328,6 +389,25 @@ export function ProjectWorkspaceClient({
                     : m,
                 ),
               );
+            } else if (event.type === "guardrail_triggered") {
+              assistantContent = event.content;
+              setChatMessages((c) =>
+                c.map((m) =>
+                  m.id === tempAssistantId
+                    ? { ...m, content: event.content }
+                    : m,
+                ),
+              );
+            } else if (event.type === "user_message") {
+              if (event.message?.id) {
+                setChatMessages((c) =>
+                  c.map((m) =>
+                    m.id === tempUserId
+                      ? { ...m, id: event.message.id }
+                      : m,
+                  ),
+                );
+              }
             } else if (event.type === "done") {
               const newCid = event.conversation?.id || conversationId;
               setConversationId(newCid);
@@ -383,8 +463,7 @@ export function ProjectWorkspaceClient({
 
   const navItems = [
     { label: "Projects", icon: Stack, href: "/dashboard", active: false },
-    { label: "Chat", icon: Sparkle, href: "#chat", active: true },
-    { label: "Settings", icon: Robot, href: "#tools", active: false },
+    { label: "Chat", icon: Sparkle, href: "#chat", active: true }, 
   ];
 
   return (
@@ -426,6 +505,7 @@ export function ProjectWorkspaceClient({
           <div className="mt-8 flex-1 overflow-y-auto">
             <div className="flex items-center justify-between gap-2 mb-3">
               <p className="text-xs font-medium uppercase tracking-wider text-white/30">History</p>
+              {canEdit && (
               <button
                 type="button"
                 onClick={handleNewChat}
@@ -434,24 +514,42 @@ export function ProjectWorkspaceClient({
               >
                 <Plus size={14} weight="regular" />
               </button>
+              )}
             </div>
             <div className="space-y-1">
               {conversations.map((c) => (
-                <button
+                <div
                   key={c.id}
-                  type="button"
-                  onClick={() => {
-                    if (c.id !== conversationId) loadConversationMessages(c.id);
-                  }}
                   className={cx(
-                    "w-full truncate rounded-xl px-3 py-2 text-left text-sm transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
+                    "group flex items-center gap-1 rounded-xl transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
                     c.id === conversationId
                       ? "bg-white/[0.07] text-white"
                       : "text-white/42 hover:bg-white/[0.04] hover:text-white/68",
                   )}
                 >
-                  {c.title || "Untitled"}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (c.id !== conversationId) loadConversationMessages(c.id);
+                    }}
+                    className="flex-1 truncate px-3 py-2 text-left text-sm"
+                  >
+                    {c.title || "Untitled"}
+                  </button>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteConversation(c.id);
+                      }}
+                      className="shrink-0 grid h-7 w-7 place-items-center rounded-full text-white/20 opacity-0 transition-all duration-200 hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
+                      aria-label="Delete conversation"
+                    >
+                      <Trash size={13} weight="regular" />
+                    </button>
+                  )}
+                </div>
               ))}
               {conversations.length === 0 && (
                 <p className="px-3 py-2 text-xs text-white/20">No conversations yet.</p>
@@ -488,24 +586,27 @@ export function ProjectWorkspaceClient({
                 <CaretDown size={16} className="text-white/42" />
               </Link>
 
-              <div className="glass-button flex h-12 items-center gap-3 rounded-full px-4 text-sm text-white/64">
+              <div
+                className="glass-button flex h-12 min-w-0 items-center gap-3 rounded-full px-4 text-sm text-white/64"
+                title={activeUserName}
+              >
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-accent-soft text-accent">
-                  {initials(project.name) || "YA"}
+                  {initials(activeUserName) || "YA"}
                 </span>
-                <span className="hidden max-w-[8rem] truncate sm:inline">
-                  {project.id.slice(0, 6)}...{project.id.slice(-4)}
+                <span className="hidden max-w-[10rem] truncate sm:inline">
+                  {activeUserName}
                 </span>
               </div>
             </header>
 
             <div className="relative z-10 grid flex-1 gap-6 px-4 pb-6 pt-6 sm:px-7 xl:grid-cols-[1fr_380px] overflow-y-auto">
               {/* ── Chat Section (Double-Bezel) ── */}
-              <div className="bezel-shell flex min-h-[84vh] flex-col">
-                <div className="bezel-shell-inner relative flex flex-1 flex-col overflow-hidden p-4 sm:p-6">
+              <div className="bezel-shell max-h-[84vh] min-h-[84vh]">
+                <div className="bezel-shell-inner relative flex max-h-[84vh] min-h-[84vh] flex-col overflow-hidden p-4 sm:p-6">
                   <div className="ambient-glow-top" />
                   <section id="chat" className="relative z-10 flex min-h-0 flex-1 flex-col">
                     <div className="flex min-h-0 flex-1 flex-col">
-                      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-4">
+                      <div className="flex-1 overflow-y-auto pb-4">
                         {isLoadingMessages ? (
                           <div className="flex min-h-[calc(84vh-12rem)] items-center justify-center">
                             <div className="mx-auto grid max-w-3xl place-items-center text-center">
@@ -514,7 +615,7 @@ export function ProjectWorkspaceClient({
                             </div>
                           </div>
                         ) : chatMessages.length ? (
-                          <div className="mx-auto w-full max-w-3xl min-h-full space-y-3">
+                          <div className="mx-auto w-full max-w-3xl space-y-3">
                             {chatMessages.map((msg) => (
                               <div
                                 key={msg.id}
@@ -540,16 +641,28 @@ export function ProjectWorkspaceClient({
                                 <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[length:16px_16px] opacity-30 [mask-image:radial-gradient(circle,black,transparent_66%)]" />
                                 <AssistantOrb />
                               </div>
-                              <p className="font-display text-3xl font-semibold tracking-tight text-white/68">Let&apos;s get started.</p>
-                              <h1 className="font-display mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-white/66 sm:text-5xl">
-                                How can I assist you today?
-                              </h1>
+                              {canEdit ? (
+                                <>
+                                  <p className="font-display text-3xl font-semibold tracking-tight text-white/68">Let&apos;s get started.</p>
+                                  <h1 className="font-display mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-white/66 sm:text-5xl">
+                                    How can I assist you today?
+                                  </h1>
+                                </>
+                              ) : (
+                                <>
+                                  <p className="font-display text-2xl font-semibold tracking-tight text-white/48">View-only access</p>
+                                  <p className="mt-3 max-w-md text-base text-white/32">
+                                    Select a conversation from the sidebar to view chat history.
+                                  </p>
+                                </>
+                              )}
                             </div>
                           </div>
                         )}
                       </div>
 
                       {/* ── Chat Input (.panel) — sticky bottom ── */}
+                      {canEdit && (
                       <div className="shrink-0 border-t border-white/[0.06] pt-4">
                         <div className="panel mx-auto w-full max-w-4xl rounded-2xl p-4">
                           <form onSubmit={handleChatSubmit}>
@@ -563,28 +676,88 @@ export function ProjectWorkspaceClient({
                                 placeholder="Ask me anything..."
                               />
                             </div>
+                            {(selectedFiles.length > 0 || isFileMenuOpen) && (
+                              <div className="mt-3 rounded-2xl border border-white/[0.05] bg-black/14 p-2">
+                                {selectedFiles.length > 0 && (
+                                  <div className="flex flex-wrap gap-2">
+                                    {selectedFiles.map((file) => (
+                                      <button
+                                        key={file.id}
+                                        type="button"
+                                        onClick={() => removeSelectedFile(file.id)}
+                                        className="glass-button inline-flex max-w-[13rem] items-center gap-2 rounded-full px-3 py-1.5 text-xs text-white/62"
+                                        title={file.filename}
+                                      >
+                                        <Files size={13} weight="regular" className="shrink-0 text-accent" />
+                                        <span className="truncate">{file.filename}</span>
+                                        <X size={12} weight="bold" className="shrink-0 text-white/34" />
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {isFileMenuOpen && (
+                                  <div className={cx("space-y-1", selectedFiles.length > 0 && "mt-2 border-t border-white/[0.05] pt-2")}>
+                                    {files.length ? (
+                                      files.map((file) => {
+                                        const selected = selectedFileIds.includes(file.id);
+                                        return (
+                                          <button
+                                            key={file.id}
+                                            type="button"
+                                            onClick={() => toggleSelectedFile(file.id)}
+                                            className={cx(
+                                              "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
+                                              selected
+                                                ? "bg-accent-soft text-white"
+                                                : "text-white/46 hover:bg-white/[0.04] hover:text-white/72",
+                                            )}
+                                          >
+                                            <Files size={15} weight={selected ? "fill" : "regular"} className="shrink-0 text-accent" />
+                                            <span className="min-w-0 flex-1">
+                                              <span className="block truncate text-xs font-medium">{file.filename}</span>
+                                              <span className="text-[11px] text-white/30">{formatFileSize(file.bytes)}</span>
+                                            </span>
+                                          </button>
+                                        );
+                                      })
+                                    ) : (
+                                      <p className="px-3 py-2 text-xs text-white/30">No files uploaded.</p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                               <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                <input
+                                  ref={fileInputRef}
+                                  type="file"
+                                  accept=".pdf,.txt,.md,.csv,.json,.docx"
+                                  className="hidden"
+                                  onChange={handleFileUpload}
+                                />
                                 <button
                                   type="button"
-                                  onClick={() => document.getElementById("files")?.scrollIntoView({ behavior: "smooth" })}
+                                  onClick={() => fileInputRef.current?.click()}
+                                  disabled={isUploading}
                                   className="glass-button grid h-9 w-9 place-items-center rounded-full text-white/62"
-                                  aria-label="Add file context"
+                                  aria-label="Upload file context"
                                 >
-                                  <Plus size={16} weight="regular" />
+                                  <Plus size={16} weight={isUploading ? "fill" : "regular"} />
                                 </button>
-                                {selectedFiles.length > 0 &&
-                                  selectedFiles.slice(0, 3).map((file) => (
-                                    <button
-                                      key={file.id}
-                                      type="button"
-                                      onClick={() => toggleSelectedFile(file.id)}
-                                      className="glass-button max-w-[12rem] truncate rounded-full px-3 py-1.5 text-xs text-white/48"
-                                      title={file.filename}
-                                    >
-                                      {file.filename}
-                                    </button>
-                                  ))}
+                                <button
+                                  type="button"
+                                  onClick={() => setIsFileMenuOpen((value) => !value)}
+                                  className={cx(
+                                    "glass-button inline-flex h-9 items-center gap-2 rounded-full px-3 text-xs text-white/56",
+                                    selectedFileIds.length > 0 && "border-accent/20 bg-accent-soft text-white/72",
+                                  )}
+                                  aria-label="Choose file context"
+                                >
+                                  <Files size={15} weight={selectedFileIds.length > 0 ? "fill" : "regular"} />
+                                  <span>{selectedFileIds.length ? `${selectedFileIds.length} files` : "Files"}</span>
+                                </button>
                               </div>
                               <button
                                 type="submit"
@@ -598,6 +771,7 @@ export function ProjectWorkspaceClient({
                           </form>
                         </div>
                       </div>
+                      )}
                     </div>
                   </section>
                 </div>
@@ -637,54 +811,6 @@ export function ProjectWorkspaceClient({
                       className="field-surface mt-4 w-full resize-none rounded-2xl px-4 py-3 text-sm leading-6 disabled:opacity-45"
                     />
                   </form>
-                </div>
-
-                {/* Files */}
-                <div className="panel rounded-2xl p-5" id="files">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-white tracking-tight">Files</p>
-                      <p className="mt-1 text-xs text-white/36">{selectedFileIds.length} selected for chat</p>
-                    </div>
-                    <span className="grid h-10 w-10 place-items-center rounded-full bg-white/[0.05] text-accent">
-                      <Files size={18} weight="regular" />
-                    </span>
-                  </div>
-
-                  {canEdit && (
-                    <form onSubmit={handleFileUpload} className="mt-4 space-y-3">
-                      <input
-                        required name="file" type="file"
-                        accept=".pdf,.txt,.md,.csv,.json,.docx"
-                        className="field-surface block w-full rounded-2xl px-3 py-2 text-sm text-white/52 file:mr-3 file:rounded-full file:border-0 file:bg-white/[0.05] file:px-3 file:py-1 file:text-sm file:text-white/78"
-                      />
-                      <button disabled={isUploading} className="glass-button w-full rounded-full px-4 py-2.5 text-sm font-medium text-white/64 disabled:opacity-50">
-                        {isUploading ? "Uploading..." : "Upload file"}
-                      </button>
-                    </form>
-                  )}
-
-                  <div className="mt-4 space-y-2">
-                    {files.length ? files.map((file) => (
-                      <label
-                        key={file.id}
-                        className={cx(
-                          "flex cursor-pointer items-start gap-3 rounded-2xl border px-3 py-3 transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.985]",
-                          selectedFileIds.includes(file.id)
-                            ? "border-accent/30 bg-accent-soft"
-                            : "border-white/[0.04] bg-black/12 hover:border-white/[0.10]",
-                        )}
-                      >
-                        <input type="checkbox" checked={selectedFileIds.includes(file.id)} onChange={() => toggleSelectedFile(file.id)} className="mt-1 accent-accent" />
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-medium text-white/76">{file.filename}</span>
-                          <span className="text-xs text-white/32">{formatFileSize(file.bytes)}</span>
-                        </span>
-                      </label>
-                    )) : (
-                      <p className="rounded-2xl border border-dashed border-white/[0.06] px-3 py-8 text-center text-sm text-white/32">No files uploaded.</p>
-                    )}
-                  </div>
                 </div>
 
                 {/* Team */}

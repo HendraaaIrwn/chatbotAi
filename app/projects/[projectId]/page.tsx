@@ -10,6 +10,8 @@ import { use, useEffect, useState } from "react";
 
 type PageProps = { params: Promise<{ projectId: string }> };
 
+type User = { id: string; email: string; name: string | null };
+
 type ProjectResponse = {
   project: {
     id: string;
@@ -25,12 +27,24 @@ type ProjectResponse = {
 export default function ProjectPage({ params }: PageProps) {
   const { projectId } = use(params);
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
   const [project, setProject] = useState<WorkspaceProject | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    apiFetch<ProjectResponse>(`/projects/${projectId}`)
+    apiFetch<{ user: User | null }>("/me")
       .then((data) => {
+        if (!data.user) {
+          router.replace("/login");
+          return null;
+        }
+
+        setUser(data.user);
+        return apiFetch<ProjectResponse>(`/projects/${projectId}`);
+      })
+      .then((data) => {
+        if (!data) return;
+
         const p = data.project;
         setProject({
           id: p.id,
@@ -71,7 +85,7 @@ export default function ProjectPage({ params }: PageProps) {
     );
   }
 
-  if (!project) {
+  if (!user || !project) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-[#020205] text-white/60">
         Loading...
@@ -79,5 +93,5 @@ export default function ProjectPage({ params }: PageProps) {
     );
   }
 
-  return <ProjectWorkspaceClient initialProject={project} />;
+  return <ProjectWorkspaceClient initialProject={project} initialUser={user} />;
 }
