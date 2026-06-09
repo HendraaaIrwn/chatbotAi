@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     JWT_EXPIRE_MINUTES: int = 10080  # 7 days
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-5.4-mini"
+    GUARDRAIL_ENABLED: bool = True
+    GUARDRAIL_INPUT_CHECK: bool = True
+    GUARDRAIL_OUTPUT_CHECK: bool = True
     CORS_ORIGINS: str = "http://localhost:3000"
 
     @property

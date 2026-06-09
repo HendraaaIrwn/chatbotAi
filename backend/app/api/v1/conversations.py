@@ -9,6 +9,31 @@ from app.models.models import Conversation, Message, User
 router = APIRouter(tags=["conversations"])
 
 
+@router.delete("/projects/{project_id}/conversations/{conversation_id}")
+def delete_conversation(
+    project_id: str,
+    conversation_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    get_project_access(project_id, "edit", user, db)
+
+    conversation = (
+        db.query(Conversation)
+        .filter(
+            Conversation.id == conversation_id,
+            Conversation.project_id == project_id,
+        )
+        .first()
+    )
+    if not conversation:
+        raise NotFoundError("Conversation not found.")
+
+    db.delete(conversation)
+    db.commit()
+    return {"ok": True}
+
+
 @router.get("/projects/{project_id}/conversations")
 def list_conversations(
     project_id: str,
@@ -19,10 +44,7 @@ def list_conversations(
 
     conversations = (
         db.query(Conversation)
-        .filter(
-            Conversation.project_id == project_id,
-            Conversation.user_id == user.id,
-        )
+        .filter(Conversation.project_id == project_id)
         .order_by(Conversation.updated_at.desc())
         .all()
     )
@@ -54,7 +76,6 @@ def get_messages(
         .filter(
             Conversation.id == conversation_id,
             Conversation.project_id == project_id,
-            Conversation.user_id == user.id,
         )
         .first()
     )

@@ -5,6 +5,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user, get_project_access
+from app.core.config import settings
 from app.core.errors import AppError, NotFoundError
 from app.models.database import get_db
 from app.models.models import (
@@ -15,6 +16,11 @@ from app.models.models import (
     User,
 )
 from app.schemas.chat import ChatRequest
+from app.services.guardrail_service import (
+    build_guardrail_instructions,
+    check_output_guardrail,
+    check_user_input_for_attack,
+)
 from app.services.openai_service import build_chat_input, get_openai_client, get_openai_model
 
 router = APIRouter(tags=["chat"])
@@ -27,7 +33,7 @@ def chat(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    get_project_access(project_id, "read", user, db)
+    get_project_access(project_id, "edit", user, db)
 
     selected_file_ids = list(dict.fromkeys(body.file_ids))
 
@@ -59,7 +65,6 @@ def chat(
             .filter(
                 Conversation.id == body.conversation_id,
                 Conversation.project_id == project_id,
-                Conversation.user_id == user.id,
             )
             .first()
         )
@@ -95,7 +100,46 @@ def chat(
     db.refresh(user_message)
 
     client = get_openai_client()
-    instructions = prompt.content if prompt else "You are a helpful project assistant."
+    base_instructions = prompt.content if prompt else "You are a helpful project assistant."
+    instructions = (
+        build_guardrail_instructions(base_instructions)
+        if settings.GUARDRAIL_ENABLED
+        else base_instructions
+    )
+
+    if settings.GUARDRAIL_ENABLED and settings.GUARDRAIL_INPUT_CHECK:
+        input_violation = check_user_input_for_attack(body.message)
+        if input_violation:
+            assistant_message = Message(
+                conversation_id=conversation.id,
+                role="assistant",
+                content=input_violation,
+            )
+            db.add(assistant_message)
+            db.commit()
+            db.refresh(assistant_message)
+            return {
+                "conversation": {
+                    "id": conversation.id,
+                    "title": conversation.title,
+                },
+                "messages": [
+                    {
+                        "id": user_message.id,
+                        "role": user_message.role,
+                        "content": user_message.content,
+                        "created_at": user_message.created_at.isoformat(),
+                    },
+                    {
+                        "id": assistant_message.id,
+                        "role": assistant_message.role,
+                        "content": assistant_message.content,
+                        "response_id": assistant_message.response_id,
+                        "created_at": assistant_message.created_at.isoformat(),
+                    },
+                ],
+            }
+
     chat_input = build_chat_input(
         [{"role": m.role, "content": m.content} for m in history],
         body.message,
@@ -103,7 +147,7 @@ def chat(
     )
 
     if body.stream:
-        return _stream_response(client, chat_input, instructions, conversation, user_message, db)
+        return _stream_response(client, chat_input, instructions, base_instructions, body.message, conversation, user_message, db)
 
     try:
         response = client.responses.create(
@@ -121,6 +165,11 @@ def chat(
     assistant_text = (
         response.output_text.strip() if response.output_text else "I could not generate a response."
     )
+
+    if settings.GUARDRAIL_ENABLED and settings.GUARDRAIL_OUTPUT_CHECK:
+        guardrail_replacement = check_output_guardrail(base_instructions, body.message, assistant_text)
+        if guardrail_replacement:
+            assistant_text = guardrail_replacement
 
     assistant_message = Message(
         conversation_id=conversation.id,
@@ -156,7 +205,7 @@ def chat(
     }
 
 
-def _stream_response(client, chat_input, instructions, conversation, user_message, db):
+def _stream_response(client, chat_input, instructions, base_instructions, user_message_text, conversation, user_message, db):
     def sse_event(event_type: str, data: dict) -> str:
         payload = {"type": event_type, **data}
         return f"data: {json.dumps(payload)}\n\n"
@@ -164,6 +213,7 @@ def _stream_response(client, chat_input, instructions, conversation, user_messag
     def generate():
         full_text = ""
         response_id = None
+        guardrail_hit = False
 
         # Send user message first
         yield sse_event("user_message", {
@@ -200,8 +250,15 @@ def _stream_response(client, chat_input, instructions, conversation, user_messag
                 yield sse_event("error", {"message": "Something went wrong."})
             return
 
-        # Save assistant message to DB
         final_text = full_text.strip() if full_text else "I could not generate a response."
+
+        if settings.GUARDRAIL_ENABLED and settings.GUARDRAIL_OUTPUT_CHECK:
+            guardrail_replacement = check_output_guardrail(base_instructions, user_message_text, final_text)
+            if guardrail_replacement:
+                guardrail_hit = True
+                final_text = guardrail_replacement
+                yield sse_event("guardrail_triggered", {"content": guardrail_replacement})
+
         assistant_message = Message(
             conversation_id=conversation.id,
             role="assistant",
@@ -226,6 +283,7 @@ def _stream_response(client, chat_input, instructions, conversation, user_messag
             },
             "user_message_id": user_message.id,
             "response_id": response_id,
+            "guardrail_hit": guardrail_hit,
         })
 
     return StreamingResponse(
