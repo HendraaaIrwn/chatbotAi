@@ -224,6 +224,7 @@ def _stream_response(client, chat_input, instructions, conversation, user_messag
                 "response_id": assistant_message.response_id,
                 "created_at": assistant_message.created_at.isoformat(),
             },
+            "user_message_id": user_message.id,
             "response_id": response_id,
         })
 

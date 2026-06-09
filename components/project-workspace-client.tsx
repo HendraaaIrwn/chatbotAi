@@ -294,18 +294,18 @@ export function ProjectWorkspaceClient({
               setConversationId(event.conversation?.id || conversationId);
               setChatMessages((c) =>
                 c.map((m) => {
-                  if (m.id === tempUserId && event.message) {
+                  if (m.id === tempUserId && event.user_message_id) {
                     return {
-                      id: event.message.id || m.id,
+                      id: event.user_message_id,
                       role: m.role,
                       content: m.content,
                     };
                   }
-                  if (m.id === tempAssistantId && event.message) {
+                  if (m.id === tempAssistantId) {
                     return {
-                      id: event.message.id || m.id,
+                      id: event.message?.id || m.id,
                       role: m.role,
-                      content: event.message.content || m.content,
+                      content: event.message?.content || m.content,
                     };
                   }
                   return m;
