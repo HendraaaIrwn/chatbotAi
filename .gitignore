@@ -13,3 +13,4 @@ __pycache__/
 .venv/
 backend/dev.db
 docs/
+.vercel
